@@ -111,6 +111,19 @@ export default function Footer() {
               models on our data or outputs.
             </p>
 
+            <p
+              className="mx-auto text-white/50"
+              style={{
+                fontWeight: 400,
+                fontSize: 13,
+                lineHeight: '145%',
+                fontVariant: 'small-caps',
+              }}
+            >
+              AI Transparency Notice: We do not identify people, analyse faces, or process biometric
+              data. Images are used only temporarily and are not stored. Our analysis focuses solely
+              on clothing and visual style.
+            </p>
             {/* Links block same as desktop */}
             <p
               className="text-white/50"
@@ -253,6 +266,19 @@ export default function Footer() {
                   AI models on our data or outputs.
                 </p>
 
+                <p
+                  className="mx-auto text-white/50"
+                  style={{
+                    fontSize: 16,
+                    lineHeight: '24px',
+                    fontWeight: 400,
+                    fontVariant: 'small-caps',
+                  }}
+                >
+                  AI Transparency Notice: We do not identify people, analyse faces, or process
+                  biometric data. Images are used only temporarily and are not stored. Our analysis
+                  focuses solely on clothing and visual style.
+                </p>
                 <p
                   className="text-white/50"
                   style={{
