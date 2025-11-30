@@ -29,7 +29,6 @@ function withTraceJson(traceId: string, data: any, init?: number | ResponseInit)
   return res;
 }
 
-// Функция очистки текста от # и *
 function sanitizeText(text: string): string {
   return text.replace(/[#*]/g, '').trim();
 }
@@ -75,13 +74,10 @@ async function ensureExcelFileExists() {
   console.log('Excel file downloaded to /tmp/file.xlsx');
 }
 
-// ── CDRs: optional formula loader (env → fallback; xlsx/text) ───────────────
 async function tryLoadCdrsFormula(traceId: string): Promise<string | null> {
-  // 1) сначала как было — читаем из env
   const envBucket = (env as any).CDRS_S3_BUCKET;
   const envKey = (env as any).CDRS_S3_KEY;
 
-  // 2) если env нет — жёсткий fallback (как в Image)
   const bucket = envBucket || 'profiling-formulas';
   const key = envKey || 'cdrs:cdrs-formula.en.v1.md.xlsx';
 
@@ -93,7 +89,6 @@ async function tryLoadCdrsFormula(traceId: string): Promise<string | null> {
     for await (const ch of body) chunks.push(ch as Buffer);
     const buf = Buffer.concat(chunks);
 
-    // Если формула в xlsx — парсим, как в Image
     if (key.toLowerCase().endsWith('.xlsx')) {
       const tmp = '/tmp/cdrs-formula.xlsx';
       writeFileSync(tmp, buf);
@@ -105,7 +100,6 @@ async function tryLoadCdrsFormula(traceId: string): Promise<string | null> {
       return text || null;
     }
 
-    // Иначе считаем текстом
     const text = buf.toString('utf8').trim();
     return text || null;
   } catch (e) {
@@ -117,11 +111,9 @@ async function tryLoadCdrsFormula(traceId: string): Promise<string | null> {
   }
 }
 
-// ── PATCH: helpers for safe image normalization ──────────────────────────────
 const URL_RE = /^https?:\/\/\S+$/i;
 const DATA_URL_IMG_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i;
 
-/** Нормализует вход из Excel */
 function normalizeExcelImage(input: string): string | null {
   if (!input) return null;
   const s = String(input).trim();
@@ -154,12 +146,10 @@ function buildUserImageDataUrl(raw: string): string {
   return `data:${mime};base64,${s}`;
 }
 
-// ── RETRY HELPERS ────────────────────────────────────────────────────────────
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const jitter = (base: number) => Math.max(0, Math.floor(base * (0.5 + Math.random())));
 const isRetriableStatus = (s: number) => s === 408 || s === 429 || (s >= 500 && s <= 599);
 
-// Сигнатуры, по которым распознаём попадание профайлинга в промпт
 const PROFILING_SIGNATURES = [
   'INSTRUCTIONS TO AI',
   'DATA SUFFICIENCY & BACKGROUND RULES',
@@ -178,11 +168,12 @@ function hasProfilingSig(content: any): boolean {
   }
 }
 
-// Диагностические флаги
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+export const maxDuration = 300;
+export const preferredRegion = 'auto';
 
-// ── Constants (no-regression) ────────────────────────────────────────────────
 const MODEL_CHAT = 'grok-4-fast-reasoning' as const;
 const MODEL_IMAGE = 'grok-2-vision-1212' as const;
 const MODEL_CDRS = 'grok-4-fast-reasoning' as const;
@@ -190,10 +181,8 @@ const MAX_TOKENS_IMAGE = 3500;
 const MAX_TOKENS_CDRS = 50000;
 const CDRS_MIN_SAVED = 2;
 const CDRS_MAX_SAVED = 5;
-// 🔸 Новый флаг — включает стрим для CDRs. По умолчанию выключен (регрессий нет).
 const CDRS_STREAMING_ENABLED = process.env.CDRS_STREAMING_ENABLED === '1';
 
-// ── Image intake guards (NEW) ────────────────────────────────────────────────
 const IMG_MAX_COUNT = Number(process.env.IMG_MAX_COUNT ?? '3');
 const IMG_MAX_INLINE_MB = Number(process.env.IMG_MAX_INLINE_MB ?? '4');
 
@@ -202,7 +191,6 @@ const DATA_URL_RE = /^data:image\/([a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i;
 const SUPPORTED_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 
 function approxBytesFromBase64Len(len: number) {
-  // base64 payload is ~ 4/3 of bytes ⇒ bytes ≈ len * 0.75
   return Math.floor(len * 0.75);
 }
 

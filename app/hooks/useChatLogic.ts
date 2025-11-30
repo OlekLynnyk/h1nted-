@@ -156,7 +156,7 @@ export function useChatLogic(): UseChatLogicResult {
     options?: {
       mode?: 'cdrs' | 'image' | 'chat';
       savedMessageIds?: string[];
-      cdrDisplay?: { id: string; profile_name: string }[]; // только для UI
+      cdrDisplay?: { id: string; profile_name: string }[];
     }
   ) => {
     const hasText = inputValue.trim() !== '';
@@ -200,7 +200,7 @@ export function useChatLogic(): UseChatLogicResult {
 
     const payload: any = { text: inputValue.trim(), attachments };
     if (options?.mode === 'cdrs' && options?.cdrDisplay?.length) {
-      payload.cdrs = options.cdrDisplay; // [{ id, profile_name }]
+      payload.cdrs = options.cdrDisplay;
     }
 
     const userMessage: ChatMessage = {
@@ -257,11 +257,8 @@ export function useChatLogic(): UseChatLogicResult {
         return;
       }
 
-      // ────────────── B.1: correlationId (один на попытку) ──────────────
       const correlationId = uuidv4();
-      // ──────────────────────────────────────────────────────────────────
 
-      // ✅ Детектим язык прямо на фронте
       const detectedLang = detectUserLanguage(inputValue || '');
       const userLanguage = detectedLang || 'en';
 
@@ -286,21 +283,17 @@ export function useChatLogic(): UseChatLogicResult {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // ────────────── B.1: передаём токен и корреляцию ──────────────
           Authorization: `Bearer ${token}`,
           'x-correlation-id': correlationId,
-          // ─────────────────────────────────────────────────────────────
         },
         body: JSON.stringify(body),
       });
 
-      // ── CDRs: поддержка SSE ответа сервера (text/event-stream) ─────────
       const ct = aiResponse.headers.get('content-type') || '';
-      let aiText: string;
+      let aiText: string = '';
 
       if (options?.mode === 'cdrs' && ct.includes('text/event-stream')) {
-        // сервер шлёт «обёрнутые» SSE: каждая внешняя data: содержит строку inner-SSE
-        const rawOuter = await aiResponse.text(); // ждём закрытия стрима
+        const rawOuter = await aiResponse.text();
         aiText = extractFinalFromWrappedSse(rawOuter).trim();
         if (!aiText) {
           throw new Error('AI generation failed (empty SSE payload)');
@@ -313,7 +306,6 @@ export function useChatLogic(): UseChatLogicResult {
         aiText = aiData?.result || aiData?.text || 'No response from AI';
       }
 
-      // 🔹 по запросу: убираем спецсимволы markdown ТОЛЬКО для CDRs
       if (options?.mode === 'cdrs') {
         aiText = aiText.replace(/[#*]/g, '');
       }
@@ -337,7 +329,6 @@ export function useChatLogic(): UseChatLogicResult {
         },
       ]);
 
-      // ── AUTOSAVE: только для CDRs ─────────────────────────────────────
       if (options?.mode === 'cdrs' && userId) {
         try {
           await supabase.from('saved_chats').insert([
@@ -393,7 +384,6 @@ export function useChatLogic(): UseChatLogicResult {
       setRefreshToken((prev) => prev + 1);
       await refetch();
     } catch (error) {
-      // безопасное логирование без JSON.stringify над объектами ошибки
       console.error({
         level: 'error',
         traceId,
@@ -403,7 +393,9 @@ export function useChatLogic(): UseChatLogicResult {
         timestamp: new Date().toISOString(),
       });
 
-      setErrorMessage(`An unexpected error occurred. Please try again. (Trace ID: ${traceId})`);
+      const msg = error instanceof Error ? error.message : JSON.stringify(error);
+
+      setErrorMessage(`❗ ${msg} (Trace: ${traceId})`);
       setGenerationError({ index: baseMessages.length });
       setMessageStatuses((prev) => ({
         ...prev,
@@ -413,14 +405,6 @@ export function useChatLogic(): UseChatLogicResult {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────────────
-  // CDRs SSE helpers — совместимы с серверной «обёрткой»
-  // Сервер шлёт внешние SSE:
-  //   data: "<chunkStr из upstream SSE>"   ← JSON-строка
-  // Внутри chunkStr содержатся строки inner-SSE от XAI: "data: {...}\n\n"
-  // 1) Разворачиваем внешние data → собираем inner-SSE
-  // 2) Из inner-SSE извлекаем delta/content, игнорируя служебные чанки
-  // ─────────────────────────────────────────────────────────────────────
   function extractFinalFromWrappedSse(rawOuter: string): string {
     const payloads = rawOuter
       .split('\n')
@@ -434,13 +418,11 @@ export function useChatLogic(): UseChatLogicResult {
       if (!payload || payload === '[DONE]') continue;
 
       try {
-        // server отправляет JSON.stringify(chunkStr) — ожидаем строку
         const maybeStr = JSON.parse(payload);
-        if (typeof maybeStr !== 'string') continue; // служебные объекты пропускаем
+        if (typeof maybeStr !== 'string') continue;
         inner += maybeStr;
         if (!maybeStr.endsWith('\n')) inner += '\n';
       } catch {
-        // нестроковые/невалидные payload — игнорируем (чтобы не было «мусора»)
         continue;
       }
     }
@@ -462,7 +444,6 @@ export function useChatLogic(): UseChatLogicResult {
 
       try {
         const obj = JSON.parse(line);
-        // Берём только полезный текст модели
         const part =
           obj?.choices?.[0]?.delta?.content ??
           obj?.choices?.[0]?.message?.content ??
@@ -472,7 +453,6 @@ export function useChatLogic(): UseChatLogicResult {
           acc += part;
         }
       } catch {
-        // служебные не-JSON строки игнорируем
         continue;
       }
     }

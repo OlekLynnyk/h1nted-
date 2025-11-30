@@ -4,13 +4,10 @@ export function detectUserLanguage(userPrompt: string | null, fallback: string =
   const text = userPrompt.trim();
   if (!text) return fallback;
 
-  // Если только символы/эмодзи/пробелы → считаем как "нет текста"
   if (/^[\p{P}\p{S}\s]+$/u.test(text)) return fallback;
 
-  // Если начинается с URL → считаем как "нет текста"
   if (/^(https?:\/\/|www\.)/i.test(text)) return fallback;
 
-  // --- Детект по Unicode-скриптам ---
   if (/\p{Script=Hiragana}|\p{Script=Katakana}/u.test(text)) return 'ja'; // японская кана
   if (/\p{Script=Hangul}/u.test(text)) return 'ko'; // корейский
   if (/\p{Script=Han}/u.test(text)) return 'zh'; // китайский (хань)
@@ -22,15 +19,12 @@ export function detectUserLanguage(userPrompt: string | null, fallback: string =
   if (/\p{Script=Georgian}/u.test(text)) return 'ka';
   if (/\p{Script=Armenian}/u.test(text)) return 'hy';
 
-  // --- Кириллица: ru vs uk (по специфике букв)
   if (/[а-яёіїєґ]/i.test(text)) {
     return /[іїєґ]/i.test(text) ? 'uk' : 'ru';
   }
 
-  // --- Латиница с диакритиками/спецсимволами ---
   if (/[őű]/i.test(text)) return 'hu'; // Hungarian
   if (/[çğıİöşü]/i.test(text)) return 'tr'; // Turkish
-  // Vietnamese (расширенный набор диакритик)
   if (
     /[ăâêôơưđ]/i.test(text) ||
     /[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựíìỉĩịýỳỷỹỵđ]/i.test(text)
@@ -52,9 +46,7 @@ export function detectUserLanguage(userPrompt: string | null, fallback: string =
   if (/[æøå]/i.test(text)) return 'da'; // Danish
   if (/[éëïöü]/i.test(text)) return 'nl'; // Dutch
 
-  // Латиница без диакритик → безопасно считаем английским
   if (/[a-z]/i.test(text)) return 'en';
 
-  // Иначе — fallback
   return fallback;
 }

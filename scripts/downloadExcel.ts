@@ -61,7 +61,6 @@ export async function parseExcel(filepath: string) {
       rowText = rowText.trim();
 
       if (rowText) {
-        // Вытаскиваем ссылки из текста тоже
         const textUrls = Array.from(rowText.matchAll(/https?:\/\/[^\s]+/g), (m) => m[0]);
         const allUrls = Array.from(new Set([...urls, ...textUrls]));
 
@@ -75,10 +74,8 @@ export async function parseExcel(filepath: string) {
     });
   });
 
-  // Убираем дубликаты по тексту
   const uniqueLines = [...new Map(parsedLines.map((b) => [b.text, b])).values()];
 
-  // Embedded images
   const zipData = Buffer.from(readFileSync(filepath));
   const zip = await JSZip.loadAsync(zipData);
 

@@ -1,6 +1,5 @@
 import { ParsedLine } from './downloadExcel';
 
-// ▼ ДОБАВЛЕНО: локальный маппер названий языков по BCP-47 коду
 const LANG_LABELS: Record<string, string> = {
   en: 'English',
   ru: 'Russian',
@@ -36,7 +35,6 @@ const LANG_LABELS: Record<string, string> = {
 function labelFor(tag: string) {
   return LANG_LABELS[tag] || 'English';
 }
-// ▲ ДОБАВЛЕНО
 
 export function prepareSystemPrompt(
   parsedLines: ParsedLine[],
@@ -45,10 +43,8 @@ export function prepareSystemPrompt(
 ): { prompt: any[] } {
   const prompt: any[] = [];
 
-  // Добавляем строгую инструкцию про язык
   prompt.push({
     type: 'text',
-    // ▼ ИЗМЕНЕНО: добавлено понятное имя + BCP-47
     text: `
 INSTRUCTION:
 - Always answer strictly in ${labelFor(finalLanguage)} (BCP-47: ${finalLanguage}).

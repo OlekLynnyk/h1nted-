@@ -1,6 +1,5 @@
 import { STANDARD_PROMPTS } from './constants';
 
-// ▼ ДОБАВЛЕНО: локальный маппер названий языков по BCP-47 коду
 const LANG_LABELS: Record<string, string> = {
   en: 'English',
   ru: 'Russian',
@@ -36,7 +35,6 @@ const LANG_LABELS: Record<string, string> = {
 function labelFor(tag: string) {
   return LANG_LABELS[tag] || 'English';
 }
-// ▲ ДОБАВЛЕНО
 
 export function buildSystemPrompt({
   type,
@@ -54,7 +52,6 @@ export function buildSystemPrompt({
 
   return [
     `INSTRUCTION:`,
-    // ▼ ИЗМЕНЕНО: добавлено понятное имя + BCP-47
     `- Always answer strictly in ${labelFor(userLanguage)} (BCP-47: ${userLanguage}).`,
     `- Do not answer in any other language.`,
     `- Even if previous context or formula is in Russian, ignore that and answer only in ${labelFor(userLanguage)}.`,

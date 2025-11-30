@@ -4,8 +4,6 @@ export type ConsentValue = 'accepted' | 'rejected' | 'necessary';
 const COOKIE_NAME = 'cookie_consent';
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-// ---------- Legacy (совместимость) ----------
-/** Читает значение согласия из cookie_consent (legacy-формат) */
 export function getConsentFromCookie(): ConsentValue | null {
   if (typeof document === 'undefined') return null;
   const pair = document.cookie.split('; ').find((r) => r.startsWith(`${COOKIE_NAME}=`));
@@ -13,7 +11,6 @@ export function getConsentFromCookie(): ConsentValue | null {
   return v === 'accepted' || v === 'rejected' || v === 'necessary' ? v : null;
 }
 
-/** Ставит cookie_consent (legacy-формат). Secure — только на https */
 export function setConsentCookie(value: ConsentValue): void {
   const isHttps = typeof window !== 'undefined' && window.location?.protocol === 'https:';
   const attrs = [
@@ -26,10 +23,6 @@ export function setConsentCookie(value: ConsentValue): void {
   document.cookie = attrs.join('; ');
 }
 
-/**
- * Мигрирует старое значение из localStorage('cookieConsent') в cookie_consent,
- * если cookie ещё нет. Возвращает итоговое значение или null.
- */
 export function migrateLegacyConsentIfNeeded(): ConsentValue | null {
   if (typeof window === 'undefined') return null;
 
@@ -46,10 +39,8 @@ export function migrateLegacyConsentIfNeeded(): ConsentValue | null {
   return null;
 }
 
-// Версия баннера (для журнала)
 export const BANNER_VERSION = '1.0.0';
 
-// ---------- Единый формат (V1) ----------
 export type ConsentPref = 'accepted' | 'rejected' | 'necessary' | 'custom';
 export type Categories = { functional: boolean; analytics: boolean; marketing: boolean };
 export type ConsentState = { pref: ConsentPref; cat: Categories };
@@ -66,7 +57,7 @@ export function stateFromPref(pref: ConsentValue): ConsentState {
 
 export function buildExtendedCookieValue(state: ConsentState): string {
   if (state.pref === 'accepted' || state.pref === 'rejected' || state.pref === 'necessary') {
-    return state.pref; // короткий формат для совместимости
+    return state.pref;
   }
   const f = state.cat.functional ? '1' : '0';
   const a = state.cat.analytics ? '1' : '0';
@@ -91,7 +82,6 @@ export function setConsentExtendedCookie(state: ConsentState): void {
   } catch {}
 }
 
-// ---------- Журнал согласий ----------
 const CONSENT_ID_COOKIE = 'consent_id';
 const TWO_YEARS = 60 * 60 * 24 * 365 * 2;
 
@@ -100,7 +90,6 @@ export function getOrCreateConsentId(): string {
   const pair = document.cookie.split('; ').find((r) => r.startsWith(`${CONSENT_ID_COOKIE}=`));
   if (pair) return pair.split('=')[1];
 
-  // UUID v4 (без внешних библиотек), с fallback если randomUUID недоступен
   const uuid =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? (crypto as any).randomUUID()
@@ -145,19 +134,16 @@ export async function logConsent(payload: {
   } catch {}
 }
 
-// ---------- Runtime: активация отложенных скриптов ----------
 function __readConsentRaw(): string | null {
   if (typeof document === 'undefined') return null;
   const pair = document.cookie.split('; ').find((r) => r.startsWith(`${COOKIE_NAME}=`));
   return pair ? pair.split('=')[1] : null;
 }
 
-/** Парсим legacy и V1|pref=...|f=1|a=0|m=0|ts=... — для рантайма */
 function __parseConsent(): { pref: ConsentPref; cat: Categories } | null {
   const val = __readConsentRaw();
   if (!val) return null;
 
-  // legacy
   if (!val.startsWith('V1|')) {
     if (val === 'accepted') {
       return { pref: 'accepted', cat: { functional: true, analytics: true, marketing: true } };
@@ -171,7 +157,6 @@ function __parseConsent(): { pref: ConsentPref; cat: Categories } | null {
     return null;
   }
 
-  // V1
   const parts = val.split('|').slice(1);
   const map = Object.fromEntries(parts.map((s) => s.split('=')).filter((x) => x.length === 2));
   const pref = (map['pref'] as ConsentPref) || 'custom';
@@ -186,10 +171,6 @@ function __parseConsent(): { pref: ConsentPref; cat: Categories } | null {
   return { pref, cat };
 }
 
-/**
- * Активирует <script type="text/plain" data-consent="functional|analytics|marketing">
- * (или всё при pref=accepted). Поддерживает data-src (+ data-async / data-defer) и inline.
- */
 export function applyConsentToPage(): void {
   const state = __parseConsent();
   if (!state) return;
@@ -213,7 +194,6 @@ export function applyConsentToPage(): void {
 
     const real = document.createElement('script');
 
-    // перенести все атрибуты кроме служебных
     for (const { name, value } of Array.from(stub.attributes)) {
       if (name === 'type' || name === 'data-consent' || name === 'data-src') continue;
       real.setAttribute(name, value);
@@ -233,7 +213,6 @@ export function applyConsentToPage(): void {
   }
 }
 
-/** Переприменяет согласие при событии из баннера/страницы настроек */
 export function attachConsentListener(): void {
   window.addEventListener('CONSENT_UPDATED', () => {
     applyConsentToPage();
