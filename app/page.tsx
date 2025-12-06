@@ -20,24 +20,22 @@ export default function HomePage() {
 
   return (
     <>
-      {/* theme-color только для главной */}
       <Head>
         <meta name="theme-color" content="#000000" />
         <meta name="color-scheme" content="dark" />
       </Head>
 
-      {/* ⬇️ ТОЛЬКО ГЛАВНАЯ: локальный тёмный фон */}
       <div className="min-h-screen flex flex-col bg-black text-[#E5E5E5] relative overflow-hidden no-scrollbar">
         <Hero
           logoSrc="/images/logo-mark.svg"
           onTryClick={() => {
             if (session) {
               router.push('/workspace');
-              return true; // ✅ редирект
+              return true;
             } else {
               sessionStorage.setItem('loginRedirectTo', window.location.pathname);
               setIsAuthModalOpen(true);
-              return false; // ❌ логин без перехода
+              return false;
             }
           }}
         />

@@ -37,9 +37,9 @@ export default function ChatBubble({
   const isUser = role === 'user';
   const [displayedText, setDisplayedText] = useState(isUser ? '' : '');
   const [copied, setCopied] = useState(false);
-  const [voiceOpen, setVoiceOpen] = useState(false); // открыто ли меню выбора голосов
-  const [isSpeaking, setIsSpeaking] = useState(false); // сейчас ли идёт озвучка
-  const voiceWrapRef = useRef<HTMLDivElement>(null); // ссылка на блок кнопки 🔊
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const voiceWrapRef = useRef<HTMLDivElement>(null);
 
   let attachments: Attachment[] | null = null;
   let cdrs: CdrRef[] | null = null;
@@ -75,10 +75,9 @@ export default function ChatBubble({
 
     const connection = (navigator as any).connection;
     const isSlow = connection?.effectiveType && ['2g', '3g'].includes(connection.effectiveType);
-    const isWeak = connection?.downlink && connection.downlink < 0.8; // менее 0.8 Mbps
+    const isWeak = connection?.downlink && connection.downlink < 0.8;
     const isOffline = typeof navigator.onLine === 'boolean' && !navigator.onLine;
 
-    // ✅ адаптивная скорость печати
     const msPerChar = isSlow || isWeak || isOffline ? 25 : 10;
 
     const startedAtRef = { current: performance.now() };
@@ -90,16 +89,13 @@ export default function ChatBubble({
       return targetLen;
     };
 
-    // первый рендер
     render();
 
-    // плавное обновление в активной вкладке
     const interval = setInterval(() => {
       const done = render() >= text.length;
       if (done) clearInterval(interval);
     }, 16);
 
-    // «догон» при возврате из фонового режима
     const onVis = () => {
       if (!document.hidden) {
         const done = render() >= text.length;
@@ -135,7 +131,6 @@ export default function ChatBubble({
     return () => window.removeEventListener('blur', stopOnBlur);
   }, []);
 
-  // ✅ Отслеживаем состояние речи каждые 200мс
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     const id = setInterval(() => {
@@ -144,7 +139,6 @@ export default function ChatBubble({
     return () => clearInterval(id);
   }, []);
 
-  // ✅ Закрытие меню при клике вне кнопки
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (!voiceOpen) return;
@@ -157,14 +151,11 @@ export default function ChatBubble({
     return () => document.removeEventListener('click', onDocClick);
   }, [voiceOpen]);
 
-  // ✅ Прогрев голосов (чтобы getVoices() возвращал список во всех браузерах)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      // Прогреваем список голосов для Safari/iOS
       const loadVoices = () => {
         const voices = window.speechSynthesis.getVoices();
         if (!voices.length) {
-          // пробуем через 300мс повторно, если ещё не подгрузились
           setTimeout(loadVoices, 300);
         }
       };
@@ -181,7 +172,6 @@ export default function ChatBubble({
       className={`w-full py-1 flex ${isUser ? 'justify-end' : 'justify-start'}`}
     >
       <div className="flex flex-col max-w-full sm:max-w-[80%] text-left">
-        {/* ✅ CDRs — бейджи выбранных отчётов пользователя */}
         {isUser && cdrs && cdrs.length > 0 && (
           <div className="flex gap-2 mb-2 flex-wrap">
             {cdrs.map((it) => (
@@ -197,7 +187,6 @@ export default function ChatBubble({
           </div>
         )}
 
-        {/* ✅ ATTACHMENTS — квадратные превью над bubble */}
         {attachments && attachments.length > 0 && (
           <div className="flex flex-col gap-2 mb-2">
             {attachments.map((file, idx) =>
@@ -221,22 +210,20 @@ export default function ChatBubble({
           </div>
         )}
 
-        {/* ✅ TEXT BUBBLE */}
         <div
-          className={`text-sm whitespace-pre-wrap px-4 py-2 rounded-xl text-[var(--text-primary)] shadow-none
+          className={`whitespace-pre-wrap px-4 py-2 rounded-xl text-[var(--text-primary)] shadow-none
             ${
               isUser
-                ? 'bg-[var(--vanilla)] border border-gray-300 border-opacity-20'
+                ? 'bg-[var(--background)] border border-[var(--card-border)] shadow-2xl rounded-3xl'
                 : 'bg-transparent border-none'
             }
           `}
           aria-live={isUser ? undefined : 'polite'}
         >
-          <p className="text-left leading-relaxed whitespace-pre-wrap break-words">
+          <p className="text-left font-monoBrand text-[13px] tracking-[0.02em] whitespace-pre-wrap break-words">
             {(isUser ? text : displayedText) || '...'}
           </p>
 
-          {/* ✅ Non-image attachments остаются внутри bubble */}
           {attachments && attachments.length > 0 && (
             <ul className="space-y-2 mt-2">
               {attachments.map(
@@ -280,7 +267,20 @@ export default function ChatBubble({
                     tabIndex={0}
                     onClick={handleCopy}
                   >
-                    <Copy size={16} />
+                    {copied ? (
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        fill="none"
+                      >
+                        <path d="M5 12l4 4 10-10" />
+                      </svg>
+                    ) : (
+                      <Copy size={16} />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent
@@ -310,7 +310,6 @@ export default function ChatBubble({
                         e.stopPropagation();
                         if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-                        // Если уже говорит — стоп, без меню
                         if (speechSynthesis.speaking) {
                           speechSynthesis.cancel();
                           setIsSpeaking(false);
@@ -318,11 +317,9 @@ export default function ChatBubble({
                           return;
                         }
 
-                        // Иначе открываем/закрываем меню
                         setVoiceOpen((v) => !v);
                       }}
                     >
-                      {/* 🔊 иконка громкости */}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="18"

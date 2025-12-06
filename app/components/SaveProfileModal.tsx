@@ -60,15 +60,13 @@ function __drawWatermark(doc: any, imgData: string) {
   const pageH = doc.internal.pageSize.getHeight();
 
   const wmW = Math.min(220, pageW * 0.35);
-  const wmH = wmW * 0.35; // приблизительное соотношение; можно подстроить
+  const wmH = wmW * 0.35;
 
-  // Ставим лёгкую прозрачность, если поддерживается
   try {
     const gs = new doc.GState({ opacity: 0.06 });
     doc.setGState(gs);
   } catch {}
 
-  // Рисуем по центру с лёгким наклоном
   doc.addImage(
     imgData,
     'PNG',
@@ -78,17 +76,15 @@ function __drawWatermark(doc: any, imgData: string) {
     wmH,
     undefined,
     'FAST',
-    -30 // поворот, градусов
+    -30
   );
 
-  // Возвращаем нормальную непрозрачность
   try {
     const gsReset = new doc.GState({ opacity: 1 });
     doc.setGState(gsReset);
   } catch {}
 }
 
-// ✅ AmbientBackdrop — не выносим в отдельный файл
 function AmbientBackdrop({ src }: { src: string }) {
   return (
     <div
@@ -116,7 +112,7 @@ interface SaveProfileModalProps {
   open: boolean;
   onClose: () => void;
   aiResponse: string;
-  // 4-й аргумент — выбранная папка (null = Saved messages)
+
   onSave: (
     name: string,
     aiResponse: string,
@@ -126,7 +122,6 @@ interface SaveProfileModalProps {
   defaultProfileName?: string;
   readonly?: boolean;
   isNew?: boolean;
-  // список пользовательских папок (без CDRs)
   folders?: string[];
 }
 
@@ -145,7 +140,6 @@ export default function SaveProfileModal({
   const [isEditing, setIsEditing] = useState(!readonly);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // выбранная папка для "Save to" (null = Saved messages / без папки)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
 
@@ -158,7 +152,6 @@ export default function SaveProfileModal({
     setSelectedFolder(null);
   }, [open]);
 
-  // --- FIX: Disable mobile zoom when editing inside modal ---
   useEffect(() => {
     const meta = document.querySelector('meta[name="viewport"]');
     if (!meta) return;
@@ -166,7 +159,6 @@ export default function SaveProfileModal({
     const originalContent = meta.getAttribute('content') || '';
 
     if (open) {
-      // Временно отключаем масштабирование
       const patched = originalContent.includes('maximum-scale')
         ? originalContent
         : `${originalContent}, maximum-scale=1, user-scalable=no`;
@@ -174,11 +166,9 @@ export default function SaveProfileModal({
     }
 
     return () => {
-      // Возвращаем meta в исходное состояние при закрытии модалки
       meta.setAttribute('content', originalContent);
     };
   }, [open]);
-  // --- END FIX ---
 
   useEffect(() => {
     if (isNew) {
@@ -193,12 +183,7 @@ export default function SaveProfileModal({
 
   const handleSave = async () => {
     if (hasChanges) {
-      await onSave(
-        profileName.trim() || defaultProfileName,
-        aiResponse.trim(),
-        '',
-        selectedFolder // передаём папку (null = Saved messages)
-      );
+      await onSave(profileName.trim() || defaultProfileName, aiResponse.trim(), '', selectedFolder);
     }
     onClose();
   };
@@ -208,11 +193,10 @@ export default function SaveProfileModal({
     await __ensureUnicodeFont(doc);
     const wm = await __ensureWatermarkImage();
 
-    // Шрифт с Unicode (если доступен)
     try {
       doc.setFont('NotoSans', 'normal');
     } catch {
-      doc.setFont('courier', 'normal'); // фолбек
+      doc.setFont('courier', 'normal');
     }
 
     const fontSize = 12;
@@ -225,12 +209,10 @@ export default function SaveProfileModal({
     const contentW = pageW - margins.left - margins.right;
     let y = margins.top;
 
-    // Рисуем водяной знак на первой странице
     if (wm) __drawWatermark(doc, wm);
 
     const newPage = () => {
       doc.addPage();
-      // Перерисовать водяной знак на каждой странице
       if (wm) __drawWatermark(doc, wm);
       try {
         doc.setFont('NotoSans', 'normal');
@@ -255,7 +237,7 @@ export default function SaveProfileModal({
     };
 
     const writeParagraph = (text: string) => {
-      const paragraphs = (text ?? '').split(/\n{2,}/); // сохраняем абзацы
+      const paragraphs = (text ?? '').split(/\n{2,}/);
       for (const p of paragraphs) {
         const lines = doc.splitTextToSize(p, contentW);
         for (const line of lines) {
@@ -263,7 +245,7 @@ export default function SaveProfileModal({
           doc.text(line, margins.left, y);
           y += lineHeight;
         }
-        y += Math.round(lineHeight * 0.5); // отступ между абзацами
+        y += Math.round(lineHeight * 0.5);
       }
     };
 
@@ -306,6 +288,7 @@ export default function SaveProfileModal({
             aria-label="Saved profile"
             onClick={(e) => e.stopPropagation()}
             className="
+              save-profile-modal
               relative
               bg-[var(--background)]
               text-[var(--text-primary)]
@@ -333,7 +316,7 @@ export default function SaveProfileModal({
               id="ws-save-modal-anchor"
               className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-1 w-1 z-[31]"
             />
-            {/* фон с логотипом */}
+
             <AmbientBackdrop src="/images/ambient.png" />
 
             <div className="flex justify-between items-center mb-5">
@@ -432,7 +415,6 @@ export default function SaveProfileModal({
 
             {isEditing && (
               <div className="flex justify-between mt-6 items-center">
-                {/* левая зона: Save to */}
                 <div
                   className="flex items-center gap-2 relative"
                   onMouseDown={(e) => e.stopPropagation()}
@@ -440,7 +422,6 @@ export default function SaveProfileModal({
                 >
                   <span className="text-sm text-[var(--text-secondary)]">Save to:</span>
 
-                  {/* кнопка выбора папки; неактивна если папок нет */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -464,7 +445,6 @@ export default function SaveProfileModal({
                     </span>
                   </button>
 
-                  {/* выпадающее меню папок */}
                   {folderMenuOpen && folders.length > 0 && (
                     <div
                       role="menu"
@@ -510,7 +490,6 @@ export default function SaveProfileModal({
                   )}
                 </div>
 
-                {/* правая зона: Cancel / Save */}
                 <div className="flex items-center gap-6">
                   <button
                     onClick={onClose}

@@ -132,7 +132,7 @@ export default function ProfileSettingsPage() {
   if (loading) return <GlobalLoading />;
 
   return (
-    <div className="min-h-screen w-full bg-[#1A1E23] text-white">
+    <div className="workspace-root min-h-screen w-full bg-[#1A1E23] text-white">
       <div className="mx-auto max-w-3xl px-4 py-10 md:py-14">
         {/* верхний мягкий glow */}
         <div

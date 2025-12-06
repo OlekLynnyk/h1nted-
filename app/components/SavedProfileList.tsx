@@ -6,73 +6,81 @@ import { useSavedProfiles, SavedProfile, SavedBlockName } from '@/app/hooks/useS
 import SaveProfileModal from '@/app/components/SaveProfileModal';
 
 type SavedProfileListProps = {
-  selectionMode?: boolean;
-  onSelectForCdr?: (profile: SavedProfile) => void;
   showCreateBlockButton?: boolean;
-  preselectedIds?: string[];
 };
 
-const CDRS_ID = 'CDRs' as const;
 const UNGROUPED_ID = '__ungrouped__' as const;
 const MAX_CUSTOM_BLOCKS = 15;
 const MAX_BLOCK_NAME_LEN = 30;
 
-/** ⬇️ Жёсткий лимит на вложения в CDRs */
-const MAX_CDR_ATTACH = 5;
-
-/** Точечная защита от повторного alert на один жест */
-const useAlertOnce = () => {
-  const lockRef = useRef(false);
-  return (msg: string) => {
-    if (lockRef.current) return;
-    lockRef.current = true;
-    try {
-      alert(msg);
-    } finally {
-      setTimeout(() => {
-        lockRef.current = false;
-      }, 0);
-    }
-  };
-};
-
-// утилиты
 const REFRESH_DEBOUNCE_MS = 200;
 const equalStringArrays = (a: string[], b: string[]) =>
   a.length === b.length && a.every((x, i) => x === b[i]);
-const equalSetToArray = (set: Set<string>, arr: string[]) => {
-  if (set.size !== arr.length) return false;
-  for (const id of arr) if (!set.has(id)) return false;
-  return true;
-};
-const TAP_TOLERANCE_POINTER = 4;
-const TAP_TOLERANCE_TOUCH = 18;
-const isFromCheckbox = (el: EventTarget | null) => {
-  const node = el as HTMLElement | null;
-  return !!node?.closest('label, input[type="checkbox"]');
-};
 
-/** ⬇️ Новое: детект реального скролл-контейнера и порог дельты */
-const SCROLL_DELTA_TOL = 12; // px
-function getScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
-  let node: HTMLElement | null = el?.parentElement ?? null;
-  while (node) {
-    const cs = window.getComputedStyle(node);
-    const oy = cs.overflowY;
-    if ((oy === 'auto' || oy === 'scroll') && node.scrollHeight > node.clientHeight) {
-      return node;
+// 👇 такой же тап-хук, как в TemplatesPanel
+function useTapToggle({
+  onTap,
+  thresh = 6,
+  cooldownMs = 180,
+}: {
+  onTap: () => void;
+  thresh?: number;
+  cooldownMs?: number;
+}) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const lastAt = useRef(0);
+
+  const cleanup = () => {
+    window.removeEventListener('pointerup', handleUp, true);
+    window.removeEventListener('pointercancel', handleCancel, true);
+    start.current = null;
+  };
+
+  const handleUp = (e: PointerEvent) => {
+    if (!start.current) return cleanup();
+    const dx = Math.abs(e.clientX - start.current.x);
+    const dy = Math.abs(e.clientY - start.current.y);
+    const now = performance.now();
+    cleanup();
+
+    // если выделяли текст — не считаем тапом
+    if (typeof window.getSelection === 'function' && window.getSelection()?.toString()) return;
+    if (dx > thresh || dy > thresh) return;
+    if (now - lastAt.current < cooldownMs) return;
+
+    lastAt.current = now;
+    onTap();
+  };
+
+  const handleCancel = () => cleanup();
+
+  const onPointerDown = (e: any) => {
+    e.stopPropagation();
+    start.current = { x: e.clientX, y: e.clientY };
+    window.addEventListener('pointerup', handleUp, true);
+    window.addEventListener('pointercancel', handleCancel, true);
+  };
+
+  const onPointerMove = () => {};
+  const onPointerUp = (e: any) => {
+    e.stopPropagation();
+  };
+
+  const onKeyDown = (e: any) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const now = performance.now();
+      if (now - lastAt.current < cooldownMs) return;
+      lastAt.current = now;
+      onTap();
     }
-    node = node.parentElement;
-  }
-  return (document.scrollingElement ?? document.documentElement) as HTMLElement;
+    if (e.key === 'Escape') e.stopPropagation();
+  };
+
+  return { onPointerDown, onPointerMove, onPointerUp, onKeyDown };
 }
 
-export default function SavedProfileList({
-  selectionMode = false,
-  onSelectForCdr,
-  showCreateBlockButton = false,
-  preselectedIds = [],
-}: SavedProfileListProps) {
+export default function SavedProfileList({ showCreateBlockButton = false }: SavedProfileListProps) {
   const { session } = useAuth();
   const userId = session?.user?.id;
 
@@ -80,40 +88,18 @@ export default function SavedProfileList({
     useSavedProfiles();
 
   const [profiles, setProfiles] = useState<SavedProfile[]>([]);
-  const [folders, setFolders] = useState<SavedBlockName[]>([CDRS_ID]);
+  const [folders, setFolders] = useState<SavedBlockName[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<SavedProfile | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    [CDRS_ID]: false,
     [UNGROUPED_ID]: false,
   });
-
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const alertOnce = useAlertOnce();
-
-  // синхронизация выбранных (по содержимому)
-  const preselectedKey = useMemo(
-    () => (preselectedIds && preselectedIds.length ? preselectedIds.slice().sort().join('|') : ''),
-    [preselectedIds]
-  );
-
-  useEffect(() => {
-    if (selectionMode) {
-      if (!equalSetToArray(selectedIds, preselectedIds)) {
-        setSelectedIds(new Set(preselectedIds));
-      }
-    } else {
-      if (selectedIds.size) setSelectedIds(new Set());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectionMode, preselectedKey]);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newBlockName, setNewBlockName] = useState('');
   const [createErr, setCreateErr] = useState<string | null>(null);
 
-  // ⬆️ якорь для авто-скролла модалки
   const modalTopRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!createModalOpen) return;
@@ -126,13 +112,11 @@ export default function SavedProfileList({
     });
   }, [createModalOpen]);
 
-  const cdrsItems = useMemo(() => profiles.filter((p) => p.folder === CDRS_ID), [profiles]);
-
   const groupedByFolder = useMemo(() => {
     const map = new Map<string, SavedProfile[]>();
     for (const p of profiles) {
       const f = (p.folder ?? '') as string;
-      if (!f || f === CDRS_ID) continue;
+      if (!f) continue;
       if (!map.has(f)) map.set(f, []);
       map.get(f)!.push(p);
     }
@@ -141,14 +125,14 @@ export default function SavedProfileList({
 
   const ungrouped = useMemo(() => profiles.filter((p) => !p.folder), [profiles]);
 
-  // refresh с дебаунсом
   const refresh = async () => {
     if (!userId) return;
     try {
       const [items, folderList] = await Promise.all([getSavedProfiles(userId), getFolders(userId)]);
       setProfiles(items);
 
-      const ordered = Array.from(new Set([CDRS_ID, ...folderList.filter((n) => n !== CDRS_ID)]));
+      const ordered = Array.from(new Set(folderList)).filter((name) => name !== 'CDRs');
+
       setFolders((prev) => (equalStringArrays(prev, ordered) ? prev : ordered));
 
       setExpanded((prev) => {
@@ -164,7 +148,6 @@ export default function SavedProfileList({
     }
   };
 
-  // первичная загрузка
   useEffect(() => {
     if (!userId) return;
     let active = true;
@@ -177,7 +160,7 @@ export default function SavedProfileList({
         ]);
         if (!active) return;
         setProfiles(items);
-        const ordered = Array.from(new Set([CDRS_ID, ...folderList.filter((n) => n !== CDRS_ID)]));
+        const ordered = Array.from(new Set(folderList)).filter((name) => name !== 'CDRs');
         setFolders(ordered);
         setExpanded((prev) => {
           const next: Record<string, boolean> = { ...prev };
@@ -196,10 +179,8 @@ export default function SavedProfileList({
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // глобальные события
   useEffect(() => {
     const handler = () => setCreateModalOpen(true);
     window.addEventListener('savedMessages:createBlock', handler as EventListener);
@@ -221,7 +202,6 @@ export default function SavedProfileList({
   }, [userId]);
 
   const handleDelete = async (id: string) => {
-    if (selectionMode) return;
     const confirmed = window.confirm('Are you sure you want to delete this profile?');
     if (!confirmed) return;
     try {
@@ -256,7 +236,7 @@ export default function SavedProfileList({
     const name = newBlockName.trim();
     setCreateErr(null);
 
-    const customCount = folders.filter((f) => f !== CDRS_ID).length;
+    const customCount = folders.length;
     if (customCount >= MAX_CUSTOM_BLOCKS) {
       setCreateErr(`You can create up to ${MAX_CUSTOM_BLOCKS} blocks.`);
       return;
@@ -269,7 +249,7 @@ export default function SavedProfileList({
       setCreateErr(`Please use a shorter name (≤ ${MAX_BLOCK_NAME_LEN} characters).`);
       return;
     }
-    if (name === CDRS_ID || name === UNGROUPED_ID) {
+    if (name === UNGROUPED_ID) {
       setCreateErr('This block name is reserved.');
       return;
     }
@@ -281,7 +261,7 @@ export default function SavedProfileList({
     try {
       await createFolder(userId, name);
       const fs = await getFolders(userId);
-      const nextOrdered = [CDRS_ID, ...fs.filter((n) => n !== CDRS_ID)];
+      const nextOrdered = Array.from(new Set(fs));
       setFolders((prev) => (equalStringArrays(prev, nextOrdered) ? prev : nextOrdered));
       setNewBlockName('');
       setCreateModalOpen(false);
@@ -291,7 +271,6 @@ export default function SavedProfileList({
   };
 
   const handleDeleteFolder = async (folderName: string) => {
-    if (selectionMode) return;
     if (!userId) return;
 
     const confirmed = window.confirm(`Delete the empty block "${folderName}"?`);
@@ -313,17 +292,15 @@ export default function SavedProfileList({
 
   const toggleExpanded = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  /** Заголовок секции */
+  // ---------- HEADER СЕКЦИИ: теперь через useTapToggle, как в TemplatesPanel ----------
   const SectionHeader = memo(({ title, id }: { title: string; id: string }) => {
-    const startRef = useRef<{ x: number; y: number } | null>(null);
-    const movedRef = useRef(false);
-    const didScrollRef = useRef(false); // ⬅️ NEW
-    const cleanupRef = useRef<(() => void) | null>(null); // ⬅️ NEW
-    const panelId = `saved-sec-${id}`;
+    const tap = useTapToggle({
+      onTap: () => toggleExpanded(id),
+      thresh: 6,
+      cooldownMs: 180,
+    });
 
-    // ⬇️ Новое: учитываем прокрутку реального скролл-контейнера
-    const scrollElRef = useRef<HTMLElement | null>(null);
-    const scrollStartRef = useRef(0);
+    const panelId = `saved-sec-${id}`;
 
     return (
       <div
@@ -333,74 +310,14 @@ export default function SavedProfileList({
         aria-expanded={!!expanded[id]}
         aria-controls={panelId}
         draggable={false}
-        style={{ touchAction: 'pan-y' }} // ⬅️ NEW: позволяет вертикальный пан
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          startRef.current = { x: e.clientX, y: e.clientY };
-          movedRef.current = false;
-          didScrollRef.current = false;
-
-          const sc = getScrollableAncestor(e.currentTarget as HTMLElement);
-          scrollElRef.current = sc;
-          scrollStartRef.current = sc?.scrollTop ?? 0;
-
-          const onScroll = () => {
-            const cur = sc?.scrollTop ?? 0;
-            if (Math.abs(cur - scrollStartRef.current) > 2) didScrollRef.current = true;
-          };
-          sc?.addEventListener('scroll', onScroll, { passive: true });
-          cleanupRef.current = () => sc?.removeEventListener('scroll', onScroll);
-        }}
-        onPointerMove={(e) => {
-          if (!startRef.current) return;
-          const dx = Math.abs(e.clientX - startRef.current.x);
-          const dy = Math.abs(e.clientY - startRef.current.y);
-          const tol =
-            (e as any).pointerType === 'touch' ? TAP_TOLERANCE_TOUCH : TAP_TOLERANCE_POINTER;
-          if (dx > tol || dy > tol) movedRef.current = true;
-        }}
-        onPointerCancel={() => {
-          startRef.current = null;
-          movedRef.current = true;
-          cleanupRef.current?.(); // ⬅️ NEW
-          cleanupRef.current = null; // ⬅️ NEW
-        }}
-        onPointerUp={(e) => {
-          e.stopPropagation();
-
-          const scrolledContainer =
-            Math.abs((scrollElRef.current?.scrollTop ?? 0) - scrollStartRef.current) >
-            SCROLL_DELTA_TOL;
-
-          // финальная фиксация факта скролла и очистка
-          if (Math.abs((scrollElRef.current?.scrollTop ?? 0) - scrollStartRef.current) > 2) {
-            didScrollRef.current = true; // ⬅️ NEW
-          }
-          cleanupRef.current?.(); // ⬅️ NEW
-          cleanupRef.current = null; // ⬅️ NEW
-
-          startRef.current = null;
-          if (movedRef.current || didScrollRef.current || scrolledContainer) return; // ⬅️ NEW
-
-          toggleExpanded(id);
-        }}
-        onClickCapture={(e) => {
-          if (!(e.currentTarget as HTMLElement).contains(e.target as Node)) return;
-          if (movedRef.current || didScrollRef.current) e.preventDefault();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggleExpanded(id);
-          }
-          if (e.key === 'Escape' && expanded[id]) {
-            e.preventDefault();
-            toggleExpanded(id);
-          }
-        }}
-        title={id === CDRS_ID ? "You can't move items into CDRs." : undefined}
+        style={{ touchAction: 'pan-y' }}
+        onPointerDown={tap.onPointerDown}
+        onPointerUp={tap.onPointerUp}
+        onKeyDown={tap.onKeyDown}
       >
-        <span className="text-sm text-[var(--text-primary)]">{title}</span>
+        <span className="text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)]">
+          {title}
+        </span>
         <span className="text-[var(--text-secondary)] text-[8px] relative top-px pointer-events-none select-none">
           {expanded[id] ? '▲' : '▼'}
         </span>
@@ -408,22 +325,15 @@ export default function SavedProfileList({
     );
   });
 
-  /**
-   * Строка (уровень 3)
-   * ⬅️ Фикс: при попытке выбрать 6-й — блокируем локально и показываем alert один раз.
-   */
+  // ---------- РЯД СОХРАНЁННОГО ОТЧЁТА: тапы как в TemplatesPanel, крестик отдельный ----------
   const Row = memo(({ profile }: { profile: SavedProfile }) => {
-    const checked = selectionMode
-      ? (preselectedIds?.includes(profile.id) ?? false)
-      : selectedIds.has(profile.id);
-    const startRef = useRef<{ x: number; y: number } | null>(null);
-    const movedRef = useRef(false);
-    const didScrollRef = useRef(false); // ⬅️ NEW
-    const cleanupRef = useRef<(() => void) | null>(null); // ⬅️ NEW
-
-    // ⬇️ Новое: учитываем прокрутку ближайшего скролл-контейнера
-    const scrollElRef = useRef<HTMLElement | null>(null);
-    const scrollStartRef = useRef(0);
+    const tap = useTapToggle({
+      onTap: () => {
+        setTimeout(() => setSelectedProfile(profile), 0);
+      },
+      thresh: 6,
+      cooldownMs: 180,
+    });
 
     return (
       <div
@@ -432,170 +342,63 @@ export default function SavedProfileList({
         tabIndex={0}
         aria-label={profile.profile_name}
         className="flex justify-between items-center px-3 py-1 cursor-pointer no-select tap-ok leading-5 min-h-[24px]"
-        style={{ touchAction: 'pan-y' }} // ⬅️ NEW
-        onPointerDown={(e) => {
-          if (selectionMode && isFromCheckbox(e.target)) return;
-          e.stopPropagation();
-          startRef.current = { x: e.clientX, y: e.clientY };
-          movedRef.current = false;
-          didScrollRef.current = false;
-
-          const sc = getScrollableAncestor(e.currentTarget as HTMLElement);
-          scrollElRef.current = sc;
-          scrollStartRef.current = sc?.scrollTop ?? 0;
-
-          const onScroll = () => {
-            const cur = sc?.scrollTop ?? 0;
-            if (Math.abs(cur - scrollStartRef.current) > 2) didScrollRef.current = true;
-          };
-          sc?.addEventListener('scroll', onScroll, { passive: true });
-          cleanupRef.current = () => sc?.removeEventListener('scroll', onScroll);
-        }}
-        onPointerMove={(e) => {
-          if (selectionMode && isFromCheckbox(e.target)) return;
-          if (!startRef.current) return;
-          const dx = Math.abs(e.clientX - startRef.current.x);
-          const dy = Math.abs(e.clientY - startRef.current.y);
-          const tol =
-            (e as any).pointerType === 'touch' ? TAP_TOLERANCE_TOUCH : TAP_TOLERANCE_POINTER;
-          if (dx > tol || dy > tol) movedRef.current = true;
-        }}
-        onPointerCancel={() => {
-          startRef.current = null;
-          movedRef.current = true;
-          cleanupRef.current?.(); // ⬅️ NEW
-          cleanupRef.current = null; // ⬅️ NEW
-        }}
-        onPointerUp={(e) => {
-          if (selectionMode && isFromCheckbox(e.target)) return;
-          e.stopPropagation();
-
-          const scrolledContainer =
-            Math.abs((scrollElRef.current?.scrollTop ?? 0) - scrollStartRef.current) >
-            SCROLL_DELTA_TOL;
-
-          // финальная фиксация факта скролла и очистка
-          if (Math.abs((scrollElRef.current?.scrollTop ?? 0) - scrollStartRef.current) > 2) {
-            didScrollRef.current = true; // ⬅️ NEW
-          }
-          cleanupRef.current?.(); // ⬅️ NEW
-          cleanupRef.current = null; // ⬅️ NEW
-
-          startRef.current = null;
-          if (movedRef.current || didScrollRef.current || scrolledContainer) return; // ⬅️ NEW
-          if (selectionMode) return;
-
-          setTimeout(() => setSelectedProfile(profile), 0);
-        }}
-        onClickCapture={(e) => {
-          if (!(e.currentTarget as HTMLElement).contains(e.target as Node)) return;
-          if (movedRef.current || didScrollRef.current) e.preventDefault();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            if (!selectionMode) setTimeout(() => setSelectedProfile(profile), 0);
-          }
-        }}
+        style={{ touchAction: 'pan-y' }}
         draggable={false}
+        onPointerDown={tap.onPointerDown}
+        onPointerUp={tap.onPointerUp}
+        onKeyDown={tap.onKeyDown}
       >
         <span
-          className="file-title no-select select-none text-sm text-[var(--text-primary)]"
+          className="file-title no-select select-none text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-primary)]"
           draggable={false}
         >
-          {profile.profile_name}
+          · {profile.profile_name}
         </span>
 
-        {selectionMode && (
-          <label
-            className="relative inline-flex items-center min-h-[36px] min-w-[36px] px-1 tap-ok"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onPointerMove={(e) => e.stopPropagation()}
-            onPointerCancel={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-          >
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => {
-                e.stopPropagation();
-
-                if (
-                  e.target.checked &&
-                  (selectionMode ? (preselectedIds?.length ?? 0) : selectedIds.size) >=
-                    MAX_CDR_ATTACH
-                ) {
-                  e.preventDefault?.();
-                  alertOnce(`You can attach up to ${MAX_CDR_ATTACH} saved reports.`);
-                  return;
-                }
-
-                if (!selectionMode)
-                  setSelectedIds((prev) => {
-                    const next = new Set(prev);
-                    if (e.target.checked) next.add(profile.id);
-                    else next.delete(profile.id);
-                    return next;
-                  });
-
-                onSelectForCdr?.(profile);
-              }}
-              className="accent-[var(--accent)] tap-ok"
-              aria-label="Select for CDRs"
-              aria-checked={checked}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              onPointerMove={(e) => e.stopPropagation()}
-              onPointerCancel={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
-            />
-          </label>
-        )}
-
-        {!selectionMode && (
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDelete(profile.id);
-            }}
-            className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-sm scale-75"
-            aria-label="Delete saved profile"
-            title="Delete"
-            type="button"
-          >
-            ✕
-          </button>
-        )}
+        <button
+          type="button"
+          data-interactive="true"
+          // важно: гасим события, чтобы не улетело в tap-хук строки
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDelete(profile.id);
+          }}
+          className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-base"
+          aria-label="Delete saved profile"
+          title="Delete"
+        >
+          ✕
+        </button>
       </div>
     );
   });
 
   if (loading) {
-    return <p className="text-sm text-[var(--text-secondary)]">Loading saved reports…</p>;
+    return (
+      <p className="font-monoBrand text-xs tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-80">
+        LOADING SAVED REPORTS…
+      </p>
+    );
   }
 
   if (profiles.length === 0) {
-    return <p className="text-sm text-[var(--text-secondary)] italic">No saved reports yet.</p>;
+    return (
+      <p className="font-monoBrand text-xs tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-60">
+        NO SAVED REPORTS YET.
+      </p>
+    );
   }
 
   return (
     <div
       className="relative flex flex-col gap-1 font-monoBrand"
-      data-cdr-selection={selectionMode ? 'on' : 'off'}
+      data-templates
+      style={{ scrollbarGutter: 'stable both-edges' }}
     >
       <div ref={modalTopRef} />
 
-      {/* модалка перенесена вверх + помечена интерактивной */}
       {createModalOpen && (
         <div
           role="dialog"
@@ -667,58 +470,45 @@ export default function SavedProfileList({
         </div>
       )}
 
-      <SectionHeader title="Combined Discernment Reports" id={CDRS_ID} />
-      {expanded[CDRS_ID] && (
-        <div id={`saved-sec-${CDRS_ID}`}>
-          {cdrsItems.length === 0 ? (
-            <div className="px-3 py-1 text-xs text-[var(--text-secondary)] italic">
-              No CDRs yet. Try the CDRs feature.
-            </div>
-          ) : (
-            cdrsItems.map((p) => <Row key={p.id} profile={p} />)
-          )}
-        </div>
-      )}
-
-      {folders
-        .filter((f) => f !== CDRS_ID)
-        .map((folderName) => {
-          const items = groupedByFolder.get(folderName) || [];
-          return (
-            <div key={`folder-${folderName}`}>
-              <SectionHeader title={folderName} id={folderName} />
-              {expanded[folderName] && (
-                <div id={`saved-sec-${folderName}`}>
-                  {items.length === 0 ? (
-                    <div className="px-3 py-1 flex justify-between items-center">
-                      <span className="text-xs text-[var(--text-secondary)] italic">
-                        This block is empty.
-                      </span>
-                      {!selectionMode && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFolder(folderName);
-                          }}
-                          className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-sm scale-75"
-                          aria-label={`Delete block ${folderName}`}
-                          title="Delete block"
-                          type="button"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    items.map((p) => <Row key={p.id} profile={p} />)
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      {folders.map((folderName) => {
+        const items = groupedByFolder.get(folderName) || [];
+        return (
+          <div key={`folder-${folderName}`}>
+            <SectionHeader title={folderName} id={folderName} />
+            {expanded[folderName] && (
+              <div id={`saved-sec-${folderName}`}>
+                {items.length === 0 ? (
+                  <div className="px-3 py-1 flex justify-between items-center">
+                    <span className="text-xs text-[var(--text-secondary)] italic">
+                      This block is empty.
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFolder(folderName);
+                      }}
+                      className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-sm scale-75"
+                      aria-label={`Delete block ${folderName}`}
+                      title="Delete block"
+                      type="button"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  items.map((p) => <Row key={p.id} profile={p} />)
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       <div className="mt-1 pt-1 border-t border-[var(--card-border)]">
+        <div className="px-3 py-1 text-[10px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)]">
+          Customisation coming soon
+        </div>
+
         {ungrouped.length === 0 ? (
           <div className="px-3 py-1 text-xs text-[var(--text-secondary)] italic">
             No saved reports yet.
@@ -728,7 +518,7 @@ export default function SavedProfileList({
         )}
       </div>
 
-      {selectedProfile && !selectionMode && (
+      {selectedProfile && (
         <SaveProfileModal
           open={true}
           onClose={() => setSelectedProfile(null)}
@@ -738,7 +528,7 @@ export default function SavedProfileList({
           }}
           defaultProfileName={selectedProfile.profile_name}
           readonly={false}
-          folders={folders.filter((f) => f !== CDRS_ID)}
+          folders={folders}
         />
       )}
     </div>

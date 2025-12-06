@@ -17,7 +17,6 @@ import {
 
 const ACCENT = '#A855F7';
 
-// Локальный парсер только для чтения текущего значения V1 (оставляем)
 const COOKIE_NAME = 'cookie_consent';
 function parseExtendedCookieFromDocument(): ConsentState | null {
   if (typeof document === 'undefined') return null;
@@ -59,7 +58,6 @@ export default function CookieSettingsPage() {
 
   const reduce = useReducedMotion();
 
-  // init: читаем расширенный формат; если нет — берем legacy
   useEffect(() => {
     const ext = parseExtendedCookieFromDocument();
     if (ext) {
@@ -143,7 +141,7 @@ export default function CookieSettingsPage() {
   if (loading) return <GlobalLoading />;
 
   return (
-    <div className="min-h-screen w-full bg-[#1A1E23] text-white">
+    <div className="cookies-page min-h-screen w-full bg-[#1A1E23] text-white">
       <div className="mx-auto max-w-3xl px-4 py-10 md:py-14">
         <div
           aria-hidden

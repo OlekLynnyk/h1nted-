@@ -128,7 +128,6 @@ export default function SubscriptionSettings() {
     payment_method: paymentMethod,
   } = data;
 
-  // Нормализация текущего плана
   const currentPlan: ValidPackageType = isValidPackageType(plan)
     ? (plan as ValidPackageType)
     : 'Freemium';
@@ -145,7 +144,6 @@ export default function SubscriptionSettings() {
           : 'bg-white/10 text-white/70 ring-white/15',
       };
 
-  // История: сортировка и 3 последних
   const sortedInvoices = [...billingHistory].sort((a, b) => {
     const da = new Date(a.date as string).getTime();
     const db = new Date(b.date as string).getTime();
@@ -155,10 +153,8 @@ export default function SubscriptionSettings() {
   const hasMoreInvoices = sortedInvoices.length > 3;
 
   return (
-    <div className="min-h-screen w-full bg-[#1A1E23] text-white">
-      {/* уменьшил верхний отступ страницы */}
+    <div className="workspace-root min-h-screen w-full bg-[#1A1E23] text-white">
       <div className="mx-auto max-w-3xl px-4 pt-2 md:pt-4 pb-10 md:pb-12">
-        {/* glow оставлен, но компактнее */}
         <div
           aria-hidden
           className="pointer-events-none -mb-1 mx-auto h-[64px] w-[min(680px,90%)] rounded-[999px] bg-white/5 blur-2xl"
@@ -169,7 +165,6 @@ export default function SubscriptionSettings() {
           animate={reduce ? undefined : { opacity: 1, y: 0, transition: { duration: 0.5 } }}
           className="relative rounded-3xl bg-white/5 backdrop-blur ring-1 ring-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.35)] p-5 md:p-8"
         >
-          {/* hairline сверху */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-3xl bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
           <header className="mb-6 md:mb-8">
@@ -189,7 +184,6 @@ export default function SubscriptionSettings() {
             </div>
           </header>
 
-          {/* детали подписки — убрал дублирующий статус и Auto-Renewal */}
           <div className="grid gap-3 text-sm">
             {isPaidPlan(currentPlan) && nextBillingDate && (
               <p className="text-white/80">
@@ -205,7 +199,6 @@ export default function SubscriptionSettings() {
               </p>
             )}
 
-            {/* оплата (только для платных планов) */}
             {isPaidPlan(currentPlan) && (
               <div className="mt-2 rounded-2xl bg-white/5 ring-1 ring-white/10 p-4">
                 <p className="text-white/80">
@@ -232,7 +225,6 @@ export default function SubscriptionSettings() {
             )}
           </div>
 
-          {/* история платежей */}
           <div className="mt-8">
             <h2 className="text-base font-semibold tracking-tight mb-3">Billing History</h2>
             <div className="overflow-hidden rounded-2xl ring-1 ring-white/10">
@@ -278,7 +270,6 @@ export default function SubscriptionSettings() {
             </div>
           </div>
 
-          {/* действия — удалил все апгрейды, оставил только отписку справа */}
           <div className="mt-8 flex justify-end">
             {isPaidPlan(currentPlan) && !cancelAtPeriodEnd && (
               <button

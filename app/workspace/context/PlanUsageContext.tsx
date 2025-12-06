@@ -31,7 +31,6 @@ export const usePlanUsage = (): PlanUsageContextType => {
   return context;
 };
 
-// ✅ Добавь эту функцию
 export function usageBump(delta: number = 1) {
   window.dispatchEvent(new CustomEvent('usage:inc', { detail: { delta } }));
 }

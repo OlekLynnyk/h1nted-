@@ -4,7 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthProvider';
 import dynamic from 'next/dynamic';
-import HeaderBar from '@/app/components/HeaderBar';
 import ChatBubble from '@/app/components/ChatBubble';
 import { ErrorBoundary } from '@/app/components/ErrorBoundary';
 import { useUserPlan } from '@/app/hooks/useUserPlan';
@@ -29,16 +28,23 @@ import { FaLinkedin } from 'react-icons/fa';
 import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
 import SessionBridge from '@/app/components/SessionBridge';
 import GlobalLoading from '@/app/loading';
-import { useSidebar } from '@/app/context/SidebarContext';
 import { useOnboardingWorkspace } from '@/app/hooks/useOnboardingWorkspace';
+import WorkspaceHeader from './WorkspaceHeader';
+import {
+  DesktopSidebar as WorkspaceSidebarDesktop,
+  MobileSidebar as WorkspaceSidebarMobile,
+} from './WorkspaceSidebar';
+import { RightPromoBanner } from './RightPromoBanner';
+import { LeftUpdateBanner } from './LeftUpdateBanner';
 
 type Attachment = { name: string; base64: string };
 
-function AmbientBackdrop({ src }: { src: string }) {
+function AmbientBackdrop({ src, offset }: { src: string; offset: number }) {
   return (
     <div
       aria-hidden
       className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden"
+      style={{ left: offset }}
     >
       <div className="absolute inset-0 flex items-center justify-center">
         <img
@@ -59,16 +65,6 @@ function AmbientBackdrop({ src }: { src: string }) {
 const LimitModal = dynamic(() => import('@/app/components/LimitModal'), { ssr: false });
 const DayLimitModal = dynamic(() => import('@/app/components/DayLimitModal'), { ssr: false });
 
-const Sidebar = dynamic(() => import('./Sidebar'), {
-  loading: () => <div className="p-8 text-[var(--text-secondary)]">Loading Sidebar...</div>,
-  ssr: false,
-});
-
-const SidebarHelper = dynamic(() => import('./SidebarHelper'), {
-  loading: () => <div className="p-8 text-[var(--text-secondary)]">Loading Helper...</div>,
-  ssr: false,
-});
-
 const OnboardingSpotlight = dynamic(
   () => import('@/app/components/onboarding/OnboardingSpotlight'),
   { ssr: false }
@@ -76,6 +72,37 @@ const OnboardingSpotlight = dynamic(
 
 export default function WorkspacePage() {
   const { session, user, isLoading } = useAuth();
+
+  const [isMobile, setIsMobile] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showRightBanner, setShowRightBanner] = useState(true);
+  const [showLeftBanner, setShowLeftBanner] = useState(true);
+  const [activeSidebarBox, setActiveSidebarBox] = useState<
+    'templates' | 'saved-messages' | 'library' | null
+  >(null);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener('change', update);
+    return () => mql.removeEventListener('change', update);
+  }, []);
+
+  const handleSidebarToggle = () => {
+    if (isMobile) {
+      setMobileSidebarOpen((v) => !v);
+    } else {
+      if (!sidebarExpanded) {
+        setShowLeftBanner(false);
+      }
+      setSidebarExpanded((v) => !v);
+    }
+  };
+
+  const sidebarWidth = isMobile ? 0 : sidebarExpanded ? 260 : 72;
+
   const [refreshToken, setRefreshToken] = useState(0);
   const router = useRouter();
 
@@ -100,12 +127,12 @@ export default function WorkspacePage() {
 
   const {
     plan: packageType,
-    used: usedDaily, // ⬅️ дневное использование
-    limits, // ⬅️ { dailyGenerations, monthlyGenerations }
-    hasReachedLimit: limitReached, // (осталось)
-    hasReachedDailyLimit, // ⬅️ дневной лимит достигнут?
-    hasReachedMonthlyLimit, // (было)
-    limitResetAt, // ⬅️ время последнего ресета (из БД)
+    used: usedDaily,
+    limits,
+    hasReachedLimit: limitReached,
+    hasReachedDailyLimit,
+    hasReachedMonthlyLimit,
+    limitResetAt,
     refetch,
   } = useUserPlan(refreshToken);
 
@@ -137,11 +164,7 @@ export default function WorkspacePage() {
   }, [hasReachedMonthlyLimit]);
 
   useEffect(() => {
-    if (
-      hasReachedDailyLimit &&
-      !hasReachedMonthlyLimit && // ⬅️ добавили проверку
-      !shownDailyOnceRef.current
-    ) {
+    if (hasReachedDailyLimit && !hasReachedMonthlyLimit && !shownDailyOnceRef.current) {
       setShowDailyModal(true);
       shownDailyOnceRef.current = true;
     }
@@ -155,46 +178,6 @@ export default function WorkspacePage() {
       setShowDailyModal(false);
     }
   }, [showDailyModal, hasReachedDailyLimit]);
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isHelperOpen, setIsHelperOpen] = useState(false);
-  const { openSidebar, toggleSidebar, closeAllSidebars } = useSidebar();
-
-  useEffect(() => {
-    const ensure = () => setIsHelperOpen(true);
-    window.addEventListener('sidebarHelper:ensureMount', ensure);
-    return () => window.removeEventListener('sidebarHelper:ensureMount', ensure);
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 768px)'); // md-брейкпоинт
-    const apply = (isDesktop: boolean) => {
-      setIsHelperOpen(isDesktop);
-      setIsSidebarOpen(isDesktop);
-
-      if (isDesktop) {
-        if (!openSidebar?.left) toggleSidebar('left');
-        if (!openSidebar?.right) toggleSidebar('right');
-      } else {
-        closeAllSidebars();
-      }
-    };
-
-    apply(mq.matches);
-
-    const onChange = (e: MediaQueryListEvent) => apply(e.matches);
-    mq.addEventListener?.('change', onChange);
-    // @ts-ignore (Safari fallback)
-    mq.addListener?.(onChange);
-
-    return () => {
-      mq.removeEventListener?.('change', onChange);
-      // @ts-ignore
-      mq.removeListener?.(onChange);
-      closeAllSidebars();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useLayoutEffect(() => {
     if (typeof window !== 'undefined' && !localStorage.getItem('theme')) {
@@ -228,10 +211,48 @@ export default function WorkspacePage() {
     fileStatus,
   } = useChatInputState();
 
+  useEffect(() => {
+    if (!showRightBanner) return;
+    if (inputValue.trim().length > 0) {
+      setShowRightBanner(false);
+    }
+  }, [inputValue, showRightBanner]);
+
+  useEffect(() => {
+    if (!showRightBanner) return;
+    if (attachedFiles.length > 0) {
+      setShowRightBanner(false);
+    }
+  }, [attachedFiles.length, showRightBanner]);
+
+  useEffect(() => {
+    if (!showLeftBanner) return;
+    if (inputValue.trim().length > 0) {
+      setShowLeftBanner(false);
+    }
+  }, [inputValue, showLeftBanner]);
+
+  useEffect(() => {
+    if (isMobile) return;
+    if (attachedFiles.length === 0) return;
+
+    if (!sidebarExpanded) {
+      setSidebarExpanded(true);
+    }
+
+    setActiveSidebarBox('templates');
+  }, [attachedFiles.length, isMobile]);
+
+  useEffect(() => {
+    if (!showLeftBanner) return;
+    if (attachedFiles.length > 0) {
+      setShowLeftBanner(false);
+    }
+  }, [attachedFiles.length, showLeftBanner]);
+
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
   useEffect(() => {
-    // safe previews without memory leaks
     const urls = attachedFiles.map((f) => URL.createObjectURL(f));
     setPreviewUrls(urls);
     return () => {
@@ -244,23 +265,10 @@ export default function WorkspacePage() {
 
   useEffect(() => {
     if (!showConfirm) return;
-
-    const isMobile =
-      typeof window !== 'undefined' &&
-      (window.matchMedia('(pointer: coarse)').matches ||
-        window.matchMedia('(max-width: 767px)').matches);
-
     if (isMobile) {
-      // Выполним закрытие только один раз при показе окна
-      requestAnimationFrame(() => {
-        try {
-          closeAllSidebars();
-        } catch (err) {
-          console.warn('Sidebar close failed (safe ignore):', err);
-        }
-      });
+      setMobileSidebarOpen(false);
     }
-  }, [showConfirm]);
+  }, [showConfirm, isMobile]);
 
   const [confirmMode, setConfirmMode] = useState<'manual' | 'pregenerate'>('manual');
   const pendingInputRef = useRef<string>('');
@@ -271,7 +279,6 @@ export default function WorkspacePage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { isDragging, overlay, setIsDragging } = useDragOverlay();
-
   const { isAtBottom } = useScrollObserver(bottomRef, scrollRef, historyLoaded);
 
   const { saveProfile, getFolders } = useSavedProfiles();
@@ -312,7 +319,7 @@ export default function WorkspacePage() {
         triggerSaveModalOpened();
       });
     }
-  }, [showSaveModal]);
+  }, [showSaveModal, triggerSaveModalOpened]);
 
   const [aiResponseToSave, setAiResponseToSave] = useState<string>('');
   const [isNewProfile, setIsNewProfile] = useState(true);
@@ -343,6 +350,28 @@ export default function WorkspacePage() {
   };
 
   const imageBlockedByCdrs = cdrSelected.length > 0;
+
+  useEffect(() => {
+    if (attachedFiles.length > 0) {
+      setIsImageActive(true);
+      setChatMode('image');
+      setIsChatActive(false);
+      setProfilingMode(true);
+    } else {
+      setIsImageActive(false);
+      if (chatMode === 'image') {
+        setChatMode('none');
+        setProfilingMode(false);
+      }
+    }
+  }, [
+    attachedFiles.length,
+    chatMode,
+    setChatMode,
+    setProfilingMode,
+    setIsImageActive,
+    setIsChatActive,
+  ]);
 
   const scrollToBottom = () => {
     scrollRef.current?.scrollTo({
@@ -381,7 +410,6 @@ export default function WorkspacePage() {
     }
   }, [historyLoaded, messages]);
 
-  // === ONBOARDING: Step 3 trigger — first assistant reply (после готовности) ===
   useEffect(() => {
     if (!historyLoaded || !ready) return;
     const hasAssistant = messages.some((m) => m.role === 'assistant');
@@ -390,7 +418,7 @@ export default function WorkspacePage() {
         triggerFirstAssistantReply();
       });
     }
-  }, [historyLoaded, ready, messages]);
+  }, [historyLoaded, ready, messages, triggerFirstAssistantReply]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -431,7 +459,7 @@ export default function WorkspacePage() {
   const submit = async () => {
     const hasInput = inputValue.trim() !== '';
     const hasFiles = attachedFiles.length > 0;
-    if (!isCdrMode && chatMode === 'none') {
+    if (!isCdrMode && chatMode === 'none' && attachedFiles.length === 0) {
       alert('Please select how you want to interact: Chat or AI Discernment.');
       return;
     }
@@ -445,7 +473,6 @@ export default function WorkspacePage() {
       return;
     }
 
-    // Предварительное подтверждение очистки только для режима Image
     if (chatMode === 'image' && attachedFiles.length > 0 && messages.length > 0) {
       pendingInputRef.current = inputValue;
       pendingFilesRef.current = attachedFiles;
@@ -478,19 +505,15 @@ export default function WorkspacePage() {
         )
       );
 
-      // CDRs: зафиксировать выбор и очистить чипы ДО запроса
       const selectedIds = cdrSelected.map((x) => x.id);
       const selectedDisplay = cdrSelected.map(({ id, profile_name }) => ({ id, profile_name }));
       if (isCdrMode) setCdrSelected([]);
 
       resetInput();
 
-      if (
-        typeof window !== 'undefined' &&
-        (window.matchMedia('(pointer: coarse)').matches ||
-          window.matchMedia('(max-width: 767px)').matches)
-      )
-        closeAllSidebars();
+      if (isMobile) {
+        setMobileSidebarOpen(false);
+      }
 
       await handleGenerate(
         inputValue.trim(),
@@ -506,24 +529,8 @@ export default function WorkspacePage() {
             : { mode: 'chat' }
       );
 
-      // сообщаем левому сайдбару перезагрузить Saved messages
       if (isCdrMode) {
         window.dispatchEvent(new Event('savedMessages:refresh'));
-      }
-
-      // ⬇️ NEW: закрываем сайдбар автоматически только на мобильных
-      if (typeof window !== 'undefined') {
-        const isMobile =
-          window.matchMedia('(pointer: coarse)').matches ||
-          window.matchMedia('(max-width: 767px)').matches;
-
-        if (isMobile) {
-          try {
-            closeAllSidebars();
-          } catch (err) {
-            console.warn('Sidebar close failed (safe ignore):', err);
-          }
-        }
       }
 
       refetch().catch(console.error);
@@ -557,7 +564,6 @@ export default function WorkspacePage() {
       setIsDragging(false);
       queueMicrotask(() => setIsDragging(false));
 
-      // Автоматическая активация режима Image
       setIsImageActive(true);
       setIsChatActive(false);
       setChatMode('image');
@@ -566,50 +572,80 @@ export default function WorkspacePage() {
   };
 
   if (isLoading) return <GlobalLoading />;
-  if (!session) return <div className="p-8 text-[var(--text-secondary)]">❌ No access</div>;
+
+  if (!session) {
+    return <div className="p-8 text-[var(--text-secondary)]">❌ No access</div>;
+  }
 
   return (
     <>
       <SessionBridge />
 
       <div
-        className="flex h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-500 relative overflow-hidden"
+        className="workspace-root flex h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-500 relative overflow-hidden"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
-        {/* фон под всем */}
-        <AmbientBackdrop src="/images/ambient.png" />
-        {/* весь контент поверх */}
-        <div className="relative z-10 flex w-full">
-          {isHelperOpen && (
-            <ErrorBoundary>
-              <SidebarHelper
-                isCdrMode={isCdrMode}
-                onSelectForCdr={handleSelectForCdr}
-                preselectedIds={cdrSelected.map((x) => x.id)}
-              />
-            </ErrorBoundary>
+        <AmbientBackdrop src="/images/ambient.png" offset={sidebarWidth} />
+        <div
+          className="relative z-10 flex w-full transition-all duration-300"
+          style={{ paddingLeft: sidebarWidth }}
+        >
+          {/* DESKTOP SIDEBAR */}
+          {!isMobile && (
+            <WorkspaceSidebarDesktop
+              expanded={sidebarExpanded}
+              onToggle={handleSidebarToggle}
+              refreshToken={refreshToken}
+              activeBox={activeSidebarBox}
+              onActiveBoxChange={setActiveSidebarBox}
+            />
           )}
-          <ErrorBoundary>
-            <Sidebar packageType={packageType} refreshToken={refreshToken} />
-          </ErrorBoundary>
 
-          <HeaderBar
+          {/* HEADER */}
+          <WorkspaceHeader
+            onToggleSidebar={handleSidebarToggle}
+            sidebarOffset={sidebarWidth}
             onLogout={handleLogoutConfirm}
             onSaveProfiling={handleSaveClick}
             disableSaveProfiling={isGenerating || messages.length === 0}
           />
+
+          {/* RIGHT VERTICAL PROMO */}
+          {!isMobile && (
+            <RightPromoBanner
+              sidebarWidth={sidebarWidth}
+              visible={showRightBanner}
+              onClose={() => setShowRightBanner(false)}
+            />
+          )}
+
+          {/* LEFT UPDATE BANNER */}
+          {!isMobile && (
+            <LeftUpdateBanner
+              sidebarWidth={sidebarWidth}
+              visible={showLeftBanner}
+              onClose={() => setShowLeftBanner(false)}
+            />
+          )}
 
           <div
             id="ws-onb-anchor"
             className="pointer-events-none absolute top-[60px] left-1/2 -translate-x-1/2 h-1 w-1 z-[31]"
           />
 
+          {/* CHAT AREA */}
           <div
-            className={`flex-1 flex flex-col justify-center items-center ${messages.length === 0 ? 'pb-0' : 'pb-[135px]'}`}
+            className={`flex-1 flex flex-col justify-center items-center ${
+              messages.length === 0 ? 'pb-0' : 'pb-[135px]'
+            }`}
           >
             <div
-              className={`w-full max-w-3xl flex-1 pt-[72px] px-4 sm:px-6 md:px-8 no-scrollbar ${messages.length === 0 ? 'overflow-hidden' : 'overflow-y-auto'}`}
+              className={`w-full max-w-3xl flex-1 ${
+                messages.length === 0 && isMobile ? 'pt-0' : 'pt-[72px]'
+              } px-4 sm:px-6 md:px-8 no-scrollbar ${
+                messages.length === 0 ? 'overflow-hidden' : 'overflow-y-auto'
+              }`}
               ref={scrollRef}
             >
               <div className="flex flex-col items-start justify-start py-4">
@@ -633,9 +669,10 @@ export default function WorkspacePage() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="flex flex-col items-center justify-center text-center w-full py-12 px-4 mt-28"
+                    className={`flex flex-col items-center justify-center text-center w-full px-4 ${
+                      isMobile ? 'min-h-[calc(100dvh-220px)]' : 'py-12 mt-28'
+                    }`}
                   >
-                    {/* Лого */}
                     <img
                       src="/images/logo.png"
                       alt="Logo"
@@ -645,16 +682,31 @@ export default function WorkspacePage() {
                       }}
                     />
 
-                    {/* Основной текст */}
                     <p
-                      className="text-[20px] font-semibold text-center text-gray-700 dark:text-[var(--text-primary)]
-                      drop-shadow-[0_2px_4px_rgba(0,0,0,0.20)] dark:drop-shadow-none"
+                      className="
+                       font-monoBrand
+                       text-[18px]
+                       tracking-[0.14em]
+                       uppercase
+                       text-center
+                       text-[var(--text-primary)]
+                      "
                     >
                       Advanced AI Discernment
                     </p>
 
-                    {/* Подпись */}
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">By {userName}</p>
+                    <p
+                      className="
+                         font-monoBrand
+                         text-[11px]
+                         tracking-[0.14em]
+                         uppercase
+                         text-[var(--text-secondary)]
+                         mt-1
+                       "
+                    >
+                      By {userName}
+                    </p>
                   </motion.div>
                 )}
 
@@ -723,13 +775,34 @@ export default function WorkspacePage() {
               </div>
             </div>
 
+            {/* INPUT PANEL */}
             <div
               id="ws-input-panel"
               data-composer-root
               data-ignore-sidebar-close="true"
-              className="fixed inset-x-0 bottom-0 w-full px-3 sm:px-4 md:px-6 pb-safe keyboard-safe z-[70]"
+              className="
+               fixed inset-x-0 bottom-0
+               px-3 sm:px-4 md:px-6
+               pb-safe keyboard-safe
+               z-[70]
+               transition-[left] duration-300
+              "
+              style={{ left: sidebarWidth }}
             >
-              <div className="relative max-w-3xl mx-auto bg-[var(--card-bg)] rounded-3xl p-3 shadow-2xl overflow-visible">
+              <div
+                className="
+                 relative
+                 mx-auto
+                 bg-[var(--card-bg)]
+                 rounded-3xl
+                 p-3
+                 shadow-2xl
+                 overflow-visible
+                 w-full
+                 max-w-full         
+                 md:max-w-[710px]    
+                "
+              >
                 <div
                   id="onb-ws-step2-anchor"
                   className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-1 w-1 z-[31]"
@@ -758,7 +831,7 @@ export default function WorkspacePage() {
                   </div>
                 )}
 
-                {isCdrMode && cdrSelected.length > 0 && (
+                {false && isCdrMode && cdrSelected.length > 0 && (
                   <div className="flex gap-2 mb-2 flex-wrap">
                     {cdrSelected.map((it) => (
                       <span
@@ -794,208 +867,123 @@ export default function WorkspacePage() {
                     disabled={isDragging}
                     inputMode="text"
                     enterKeyHint="send"
-                    className="w-full px-4 py-2 text-sm placeholder:text-sm ios-no-zoom leading-5 min-h-[36px] placeholder-[var(--text-secondary)] rounded-xl focus:outline-none focus:ring-0 bg-[var(--card-bg)] text-[var(--text-primary)] resize-none overflow-y-auto max_h-[120px]"
+                    className="
+                      w-full px-4 py-2
+                      ios-no-zoom
+                      min-h-[36px]
+                      rounded-xl
+                      bg-[var(--card-bg)]
+                      text-[var(--text-primary)]
+                      resize-none overflow-y-auto max_h-[120px]
+                      focus:outline-none focus:ring-0
+
+                      font-monoBrand
+                      text-[11px]
+                      tracking-[0.14em]
+                      uppercase
+
+                      placeholder:text-[11px]
+                      placeholder:font-monoBrand
+                      placeholder:tracking-[0.14em]
+                      placeholder:uppercase
+                      placeholder:text-[var(--text-secondary)]
+                    "
                   />
 
                   <div className="flex flex-wrap justify-between items-center w-full px-1 gap-2 mt-0.5">
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <label
-                        className={`cursor-pointer w-9 h-9 flex items-center justify-center rounded-full shadow-sm transition
-                                  bg-[var(--button-bg)] dark:bg-[var(--card-bg)] hover:bg-[var(--button-hover-bg)]`}
-                        title={
-                          isCdrMode
-                            ? attachedFiles.length >= 1
-                              ? 'Only 1 photo allowed in CDRs'
-                              : 'Attach up to 1 photo in CDRs'
-                            : undefined
-                        }
-                      >
-                        <Plus size={16} className="text-[var(--text-primary)]" />
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          multiple={!isCdrMode}
-                          disabled={isCdrMode && attachedFiles.length >= 1}
-                          title={
-                            isCdrMode && attachedFiles.length >= 1
-                              ? 'Only 1 photo allowed in CDRs'
-                              : undefined
-                          }
-                          onChange={(e) => {
-                            handleFileChange(e);
-                            triggerFirstImage();
-                            if (e.target.files && e.target.files.length > 0) {
-                              setIsImageActive(true);
-                              setIsChatActive(false);
-                              setChatMode('image');
-                              setProfilingMode(true);
-                            }
-                          }}
-                        />
-                      </label>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (isCdrMode && cdrSelected.length === 0) {
-                            setIsCdrMode(false);
-                          }
-                          if (imageBlockedByCdrs) {
-                            alert('Disable CDRs attachments to use Image mode.');
-                            return;
-                          }
-                          if (!isImageActive) {
-                            setIsImageActive(true);
-                            setChatMode('image');
-                            setIsChatActive(false);
-                            setProfilingMode(true);
-                            return;
-                          }
-                          if (attachedFiles.length > 0) {
-                            return;
-                          }
-                          setIsImageActive(false);
-                          setChatMode('none');
-                          setIsChatActive(false);
-                          setProfilingMode(false);
-                        }}
-                        disabled={imageBlockedByCdrs}
-                        title={
-                          imageBlockedByCdrs
-                            ? 'Unavailable while CDRs attachments are selected'
-                            : 'Toggle Image Mode'
-                        }
-                        className={`
-                        flex items-center gap-1 h-8 px-3
-                        rounded-full shadow-sm transition text-xs font-medium
-                        ${
-                          isImageActive
-                            ? 'bg-[#C084FC] text-white hover:bg-[#a05adb] dark:bg-[var(--button-hover-bg)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--button-hover-bg)] dark:ring-1 dark:ring-[var(--card-border)]'
-                            : 'bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)] dark:bg-[var(--card-bg)]'
-                        }
+                    <label
+                      className={`
+                          flex items-center gap-1 h-8 px-3
+                          rounded-full shadow-sm transition text-xs font-medium
+                          bg-[var(--button-bg)] text-[var(--text-primary)]
+                          hover:bg-[var(--button-hover-bg)] dark:bg-[var(--card-bg)]
+                          cursor-pointer
                           ${imageBlockedByCdrs ? 'opacity-50 cursor-not-allowed' : ''}
                         `}
-                        aria-label="Toggle Image Mode"
-                      >
-                        <ImageIcon size={14} />
-                        Image
-                      </button>
-
-                      <button
-                        id="ws-cdrs-btn"
-                        type="button"
-                        data-ignore-sidebar-close="true"
-                        disabled={window.matchMedia('(max-width: 767px)').matches}
-                        onClick={() => {
-                          if (isCdrMode && cdrSelected.length > 0) {
-                            alert('Remove all CDR attachments to turn CDRs off.');
-                            return;
-                          }
-
-                          const next = !isCdrMode;
-                          if (next && (attachedFiles.length > 0 || isImageActive))
-                            setIsImageActive(false);
-                          setIsCdrMode(next);
-                          if (next) triggerCdrsEnabled();
-
-                          if (next) {
-                            setIsHelperOpen(true);
-                            if (!openSidebar?.left) toggleSidebar('left');
-                          }
-                        }}
-                        aria-pressed={isCdrMode}
-                        className={`
-                          flex items-center gap-1 h-8 px-3 rounded-full shadow-sm transition text-xs font-medium
-                          ${
-                            isCdrMode
-                              ? 'bg-[#C084FC] text-white hover:bg-[#a05adb] dark:bg-[var(--button-hover-bg)] dark:text-[var(--text-primary)] dark:hover:bg-[var(--button-hover-bg)] dark:ring-1 dark:ring-[var(--card-border)]'
-                              : 'bg-[var(--button-bg)] text-[var(--text-primary)] hover:bg-[var(--button-hover-bg)] dark:bg-[var(--card-bg)]'
-                          }
-                          `}
-                        title={
-                          isCdrMode && cdrSelected.length > 0
-                            ? 'Remove all attachments to turn CDRs off'
-                            : 'CDRs mode'
+                      title={
+                        imageBlockedByCdrs
+                          ? 'Unavailable while CDRs attachments are selected'
+                          : isCdrMode && attachedFiles.length >= 1
+                            ? 'Only 1 photo allowed in CDRs'
+                            : isCdrMode
+                              ? 'Attach up to 1 photo in CDRs'
+                              : 'Attach image'
+                      }
+                      onClick={(e) => {
+                        if (imageBlockedByCdrs) {
+                          e.preventDefault();
+                          alert('Disable CDRs attachments to use Image mode.');
                         }
-                        aria-label="CDRs Button"
+                      }}
+                    >
+                      <ImageIcon size={14} />
+                      Image
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        multiple={!isCdrMode}
+                        disabled={imageBlockedByCdrs || (isCdrMode && attachedFiles.length >= 1)}
+                        onChange={(e) => {
+                          handleFileChange(e);
+                          triggerFirstImage();
+                        }}
+                      />
+                    </label>
+                    <div className="relative hidden md:block">
+                      <button
+                        type="button"
+                        onClick={() => setShowMoreDropdown(!showMoreDropdown)}
+                        aria-label="More Button"
+                        className="hidden"
                       >
-                        <Layers className="w-4 h-4" />
-                        CDRs
+                        More
+                        <ChevronDown
+                          size={14}
+                          className={`transition-transform duration-200 ${
+                            showMoreDropdown ? 'rotate-180' : ''
+                          }`}
+                        />
                       </button>
 
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setShowMoreDropdown(!showMoreDropdown)}
-                          aria-label="More Button"
+                      {showMoreDropdown && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 8 }}
+                          transition={{ duration: 0.2 }}
                           className="
-                        flex items-center gap-1 h-8 px-3
-                       rounded-full shadow-sm transition
-                       bg-[var(--button-bg)] text-[var(--text-primary)]
-                       hover:bg-[var(--button-hover-bg)] dark:bg-[var(--card-bg)]
-                       text-xs font-medium
-                      "
-                        >
-                          More
-                          <ChevronDown
-                            size={14}
-                            className={`transition-transform duration-200 ${showMoreDropdown ? 'rotate-180' : ''}`}
-                          />
-                        </button>
-
-                        {showMoreDropdown && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 8 }}
-                            transition={{ duration: 0.2 }}
-                            className="
                               absolute bottom-full mb-2 left-0 z-50
                               w-48 max-w-[calc(100vw-2rem)] rounded-xl shadow-xl
                               bg-[var(--card-bg)] text-[var(--text-primary)]
                               border border-[var(--card-border)]
                               overflow-auto max-h-[50vh] text-sm
                             "
-                          >
-                            <button
-                              className={`w-full text-left px-4 py-2 text-xs hover:bg-[var(--surface-secondary)] transition ${isChatActive ? 'text-[#C084FC]' : ''}`}
-                              onClick={() => {
-                                if (isCdrMode && cdrSelected.length > 0) {
-                                  alert('Remove all CDR attachments to switch modes.');
-                                  return;
-                                }
-                                if (isCdrMode && cdrSelected.length === 0) {
-                                  setIsCdrMode(false);
-                                }
+                        >
+                          <button
+                            className={`w-full text-left px-4 py-2 text-xs hover:bg-[var(--surface-secondary)] transition ${
+                              isChatActive ? 'text-[#C084FC]' : ''
+                            }`}
+                            onClick={() => {
+                              if (isCdrMode && cdrSelected.length > 0) {
+                                alert('Remove all CDR attachments to switch modes.');
+                                return;
+                              }
+                              if (isCdrMode && cdrSelected.length === 0) {
+                                setIsCdrMode(false);
+                              }
 
-                                const next = !isChatActive;
-                                setIsChatActive(next);
-                                setChatMode(next ? 'chat' : 'none');
-                                setIsImageActive(false);
-                                setShowMoreDropdown(false);
-                              }}
-                            >
-                              💬 Grok 4
-                            </button>
-                            <button
-                              className="w-full text-left px-4 py-2 text-xs hover:bg-[var(--surface-secondary)] transition"
-                              onClick={() => alert('Currently not available.')}
-                            >
-                              <span className="inline-flex items-center gap-2">
-                                <FaLinkedin className="w-3.5 h-3.5" />
-                                LinkedIn
-                              </span>
-                            </button>
-                            <button
-                              className="w-full text-left px-4 py-2 text-xs hover:bg-[var(--surface-secondary)] transition"
-                              onClick={() => alert('Currently not available.')}
-                            >
-                              DISC/BIG 5
-                            </button>
-                          </motion.div>
-                        )}
-                      </div>
+                              const next = !isChatActive;
+                              setIsChatActive(next);
+                              setChatMode(next ? 'chat' : 'none');
+                              setIsImageActive(false);
+                              setShowMoreDropdown(false);
+                            }}
+                          >
+                            💬 Grok 4
+                          </button>
+                        </motion.div>
+                      )}
                     </div>
 
                     <button
@@ -1004,8 +992,8 @@ export default function WorkspacePage() {
                         limitReached ||
                         isGenerating ||
                         (isCdrMode
-                          ? cdrSelected.length < 2 || attachedFiles.length > 1 // в CDRs достаточно >=2 выбранных, текст не обязателен
-                          : !inputValue.trim() && attachedFiles.length === 0) // в обычных режимах как было
+                          ? cdrSelected.length < 2 || attachedFiles.length > 1
+                          : !inputValue.trim() && attachedFiles.length === 0)
                       }
                       title={
                         isCdrMode
@@ -1051,8 +1039,8 @@ export default function WorkspacePage() {
                 </div>
               </div>
 
-              <div className="mt-2 text-center text-xs text-[var(--text-secondary)]">
-                H1NTED can make mistakes. See{' '}
+              <div className="mt-2 text-center font-monoBrand text-[11px] tracking-[0.14em] uppercase text-[var(--text-secondary)]">
+                <span className="hidden md:inline">H1NTED can make mistakes. </span> See{' '}
                 <a
                   href="/terms"
                   target="_blank"
@@ -1104,12 +1092,11 @@ export default function WorkspacePage() {
               <div
                 ref={confirmRef}
                 className="
-    relative
-    rounded-xl px-5 py-3 shadow-md
-    max-w-[350px] w-[90%] sm:w-full text-sm
-    bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-primary)]
-    dark:bg-[var(--card-bg)] dark:border-[var(--card-border)] dark:text-[var(--text-primary)]
-  "
+                  rounded-xl px-5 py-3 shadow-md
+                  max-w-[350px] w-[90%] sm:w-full text-sm
+                  bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-primary)]
+                  dark:bg-[var(--card-bg)] dark:border-[var(--card-border)] dark:text-[var(--text-primary)]
+                "
               >
                 <p className="text-left mb-3">
                   {confirmMode === 'manual'
@@ -1126,7 +1113,7 @@ export default function WorkspacePage() {
                   <button
                     onClick={async () => {
                       if (confirmMode === 'manual') {
-                        setShowConfirm(false); // закрываем окно сразу
+                        setShowConfirm(false);
                         try {
                           await clearMessages();
                         } catch (e) {
@@ -1136,7 +1123,6 @@ export default function WorkspacePage() {
                         }
                         return;
                       }
-                      // pregenerate: очистить историю и запустить генерацию с буферами
                       await clearMessages();
                       resetInput();
                       setProfilingMode(false);
@@ -1159,7 +1145,6 @@ export default function WorkspacePage() {
                           )
                         );
 
-                        // CDRs: зафиксировать выбор и очистить чипы ДО запроса
                         const selectedIds = cdrSelected.map((x) => x.id);
                         const selectedDisplay = cdrSelected.map(({ id, profile_name }) => ({
                           id,
@@ -1181,7 +1166,6 @@ export default function WorkspacePage() {
                               ? { mode: 'image' }
                               : { mode: 'chat' }
                         );
-                        // после успешной генерации CDR уведомляем сайдбар
                         if (isCdrMode) {
                           window.dispatchEvent(new Event('savedMessages:refresh'));
                         }
@@ -1206,7 +1190,11 @@ export default function WorkspacePage() {
           )}
 
           <ErrorBoundary>
-            <LimitModal show={showLimitModal} onClose={() => setShowLimitModal(false)} />
+            <LimitModal
+              show={showLimitModal}
+              onClose={() => setShowLimitModal(false)}
+              sidebarOffset={sidebarWidth}
+            />
           </ErrorBoundary>
 
           <ErrorBoundary>
@@ -1216,6 +1204,7 @@ export default function WorkspacePage() {
               used={usedDaily}
               limit={limits.dailyGenerations}
               dailyResetsAtLabel={dailyResetLabel}
+              sidebarOffset={sidebarWidth}
             />
           </ErrorBoundary>
 
@@ -1297,18 +1286,6 @@ export default function WorkspacePage() {
             />
           )}
 
-          {ready && showStep6 && (
-            <OnboardingSpotlight
-              targetSelector="#ws-cdrs-btn"
-              title="Combine Discernment Reports"
-              body="Merge from 2 up to 5 existing reports to get a broader analysis. Pick them from Saved messages in the left sidebar."
-              ctaLabel="Got it"
-              hideSecondary
-              onAccept={acceptStep6}
-              onDismiss={() => {}}
-            />
-          )}
-
           {ready && showFirstImageDrag && (
             <OnboardingSpotlight
               targetSelector="#ws-input-panel"
@@ -1322,8 +1299,16 @@ export default function WorkspacePage() {
           )}
 
           {overlay}
-        </div>{' '}
-        {/* закрываем z-10 обёртку */}
+
+          {isMobile && (
+            <WorkspaceSidebarMobile
+              open={mobileSidebarOpen}
+              onClose={() => setMobileSidebarOpen(false)}
+              activeBox={activeSidebarBox}
+              onActiveBoxChange={setActiveSidebarBox}
+            />
+          )}
+        </div>
       </div>
     </>
   );

@@ -9,6 +9,7 @@ import { PACKAGE_TO_PRICE } from '@/types/plan';
 interface LimitModalProps {
   show: boolean;
   onClose: () => void;
+  sidebarOffset?: number;
 }
 
 const ACCENT = '#A855F7';
@@ -26,7 +27,7 @@ function CheckIcon({ className = '' }: { className?: string }) {
   );
 }
 
-export default function LimitModal({ show, onClose }: LimitModalProps) {
+export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitModalProps) {
   const [expanded, setExpanded] = useState(false);
   const supabase = createPagesBrowserClient();
 
@@ -80,7 +81,11 @@ export default function LimitModal({ show, onClose }: LimitModalProps) {
   return (
     <div
       className="fixed w-full flex justify-center px-2 sm:px-4 z-50"
-      style={{ bottom: 'calc(145px + env(safe-area-inset-bottom, 0px))' }}
+      style={{
+        left: sidebarOffset,
+        width: `calc(100% - ${sidebarOffset}px)`,
+        bottom: 'calc(145px + env(safe-area-inset-bottom, 0px))',
+      }}
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -96,28 +101,27 @@ export default function LimitModal({ show, onClose }: LimitModalProps) {
             text-[var(--text-primary)]
           `}
         >
-          {/* --- COMPACT --- */}
           {!expanded ? (
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-3 text-sm text-white">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-4 py-3 text-[11px] font-monoBrand tracking-[0.14em] uppercase text-white">
               <span className="whitespace-normal md:whitespace-nowrap text-center md:text-left">
                 You've reached the plan limit:
               </span>
               <div className="flex flex-col md:flex-row gap-2 md:items-center w-full md:w-auto">
                 <button
                   onClick={() => handleCheckout('Premium')}
-                  className="text-[11px] bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md w-full md:w-auto min-w-[95px]"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md w-full md:w-auto min-w-[95px] font-monoBrand tracking-[0.14em] uppercase text-[11px]"
                 >
                   Upgrade to Premium
                 </button>
                 <button
                   onClick={() => handleCheckout('Business')}
-                  className="text-[11px] bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md w-full md:w-auto min-w-[95px]"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md w-full md:w-auto min-w-[95px] font-monoBrand tracking-[0.14em] uppercase text-[11px]"
                 >
                   Upgrade to Business
                 </button>
                 <button
                   onClick={() => setExpanded(true)}
-                  className="text-gray-400 hover:text-white flex items-center justify-center w-full md:w-auto"
+                  className="text-gray-400 hover:text-white flex items-center justify-center w-full md:w-auto font-monoBrand tracking-[0.14em] uppercase text-[11px]"
                   aria-label="Expand"
                 >
                   <ArrowUpRight size={16} />
@@ -125,7 +129,6 @@ export default function LimitModal({ show, onClose }: LimitModalProps) {
               </div>
             </div>
           ) : (
-            /* --- EXPANDED --- */
             <div
               className="relative px-4 pt-2 pb-4 sm:px-6 sm:pt-2 sm:pb-5 rounded-2xl overflow-y-auto"
               style={{ maxHeight: 'min(65svh, calc(100vh - 200px))' }}

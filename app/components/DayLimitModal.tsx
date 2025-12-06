@@ -8,8 +8,8 @@ type DayLimitModalProps = {
   used: number;
   limit: number;
   dailyResetsAtLabel?: string;
-  /** если хочешь показывать вместе с месячным — оставь true */
-  offsetFromBottomPx?: number; // по умолчанию 145, чтобы не перекрывать monthly
+  offsetFromBottomPx?: number;
+  sidebarOffset?: number;
 };
 
 export default function DayLimitModal({
@@ -19,6 +19,7 @@ export default function DayLimitModal({
   limit,
   dailyResetsAtLabel,
   offsetFromBottomPx = 145,
+  sidebarOffset = 0,
 }: DayLimitModalProps) {
   useEffect(() => {
     if (!show) return;
@@ -29,11 +30,14 @@ export default function DayLimitModal({
 
   if (!show) return null;
 
-  // компактный баннер (как месячный), без затемнения, без expand
   return (
     <div
       className="fixed w-full flex justify-center px-2 sm:px-4 z-40"
-      style={{ bottom: `calc(${offsetFromBottomPx}px + env(safe-area-inset-bottom, 0px))` }}
+      style={{
+        left: sidebarOffset,
+        width: `calc(100% - ${sidebarOffset}px)`,
+        bottom: `calc(${offsetFromBottomPx}px + env(safe-area-inset-bottom, 0px))`,
+      }}
       role="status"
       aria-live="polite"
     >
@@ -51,7 +55,7 @@ export default function DayLimitModal({
             text-[var(--text-primary)]
           "
         >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3 px-4 py-2 md:py-[6px] text-sm text-white">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3 px-4 py-2 md:py-[6px] text-[11px] font-monoBrand tracking-[0.14em] uppercase text-white">
             <span className="whitespace-normal md:whitespace-nowrap text-center md:text-left">
               Daily limit reached: {used}/{limit}
               {dailyResetsAtLabel ? ` • Resets at ${dailyResetsAtLabel}` : ''}
@@ -60,7 +64,7 @@ export default function DayLimitModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md w-full md:w-auto min-w-[95px] min-h-[44px] md:min-h-[36px] md:px-3 md:py-1.5 md:text-[11px]"
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md w-full md:w-auto min-w-[95px] min-h-[44px] md:min-h-[36px] md:px-3 md:py-1.5 font-monoBrand tracking-[0.14em] uppercase text-[11px]"
                 aria-label="Dismiss daily limit banner"
               >
                 Got it

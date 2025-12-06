@@ -5,9 +5,8 @@ export default function PrivacyPage() {
   return (
     <main
       aria-labelledby="privacy-title"
-      className="relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
+      className="legal-page relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
     >
-      {/* Верхний мягкий глоу как на главной */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 h-[140px] w-[min(760px,92%)] rounded-[999px] bg-white/5 blur-2xl"
@@ -20,7 +19,6 @@ export default function PrivacyPage() {
         H1NTED — Privacy Policy
       </h1>
 
-      {/* Стеклянная карточка */}
       <section
         className="
           relative rounded-3xl backdrop-blur
@@ -28,16 +26,13 @@ export default function PrivacyPage() {
           px-5 sm:px-8 py-6 sm:py-8 space-y-6
         "
       >
-        {/* Тонкая светящаяся полоса сверху */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-3xl bg-gradient-to-r from-transparent via-[#A855F7]/60 to-transparent"
         />
 
-        {/* Контент */}
         <p className="text-sm text-[var(--text-secondary)]">Effective Date: 7 October 2025</p>
 
-        {/* Вступление */}
         <p className="text-[var(--text-secondary)]">
           This Privacy Policy explains how H1NTED (“H1NTED”, “we”, “us”, “our”) processes personal
           data in connection with our AI-driven persona analysis platform, website and associated
@@ -49,7 +44,7 @@ export default function PrivacyPage() {
           Registered address: Flat 178, 1d Universytetska Street, Irpin, Bucha District, Kyiv
           Oblast, 08200, Ukraine.
         </p>
-        {/* EU Representative (Art. 27 GDPR) */}
+
         <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)] mt-2">
           EU Representative (Art. 27 GDPR)
         </h2>
@@ -446,7 +441,6 @@ export default function PrivacyPage() {
           </p>
         </div>
 
-        {/* Низ карточки: едва заметная разделительная линия */}
         <div className="pt-4 mt-2 border-t border-[var(--card-border)]" />
       </section>
     </main>

@@ -4,9 +4,8 @@ export default function SubProcessorsPage() {
   return (
     <main
       aria-labelledby="subprocessors-title"
-      className="relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
+      className="subprocessors-page relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
     >
-      {/* Верхний мягкий глоу */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 h-[140px] w-[min(760px,92%)] rounded-[999px] bg-white/5 blur-2xl"
@@ -19,7 +18,6 @@ export default function SubProcessorsPage() {
         Sub-processors
       </h1>
 
-      {/* Стеклянная карточка */}
       <section
         className="
           relative rounded-3xl backdrop-blur
@@ -27,7 +25,6 @@ export default function SubProcessorsPage() {
           px-5 sm:px-8 py-6 sm:py-8 space-y-6
         "
       >
-        {/* Тонкая светящая полоска сверху */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-3xl bg-gradient-to-r from-transparent via-[#A855F7]/60 to-transparent"
@@ -71,7 +68,6 @@ export default function SubProcessorsPage() {
           limited to the minimum necessary to perform the service.
         </blockquote>
 
-        {/* Таблица со скроллом на мобильных */}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left align-top text-sm">
             <thead className="text-[var(--text-secondary)]">
@@ -308,7 +304,6 @@ export default function SubProcessorsPage() {
           .
         </p>
 
-        {/* Низ карточки */}
         <div className="pt-4 mt-2 border-t border-[var(--card-border)]" />
       </section>
     </main>

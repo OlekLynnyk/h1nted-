@@ -24,5 +24,4 @@ export const COOKIES_AND_SDKS: CookieRow[] = [
     category: 'analytics',
     vendor: 'Google',
   },
-  // добавим остальные как появятся
 ];

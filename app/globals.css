@@ -1,11 +1,10 @@
 @import 'tailwindcss';
 
-/* Светлая тема — переменные по умолчанию */
 :root {
-  --background: #ffffff;
+  --background: #ede9e9;
   --foreground: rgba(23, 23, 23, 0.92);
 
-  --surface: #f5f5f5;
+  --surface: #e3e0e0;
   --surface-secondary: #e5e5e5;
   --text-primary: rgba(23, 23, 23, 0.92);
   --text-secondary: #4a4a4a;
@@ -13,17 +12,15 @@
   --accent-hover: #4f46e5;
   --danger: #ef4444;
 
-  --card-bg: #fdfdfd;
+  --card-bg: #ebe9e9;
   --card-border: #d4d4d4;
 
-  /* для кнопок в сайдбаре (есть использования) */
   --button-bg: #f1f1f1;
   --button-hover-bg: #e9e9e9;
 
   --font-sans: var(--font-orbitron);
 }
 
-/* Тёмная тема — переопределение (только цвета) */
 .dark {
   --background: #0B0E11;
   --foreground: rgba(255, 255, 255, 0.92);
@@ -47,7 +44,29 @@
   --button-hover-bg: #223140;
 }
 
-/* Базовые стили */
+.gray {
+  --background: #1a1a1c;
+  --foreground: rgba(248, 250, 252, 0.96);
+
+  --surface: #19191a;
+  --surface-secondary: #1f1f21;
+
+  --text-primary: rgba(248, 250, 252, 0.98);
+  --text-secondary: rgba(156, 163, 175, 0.9);
+
+  --accent: #a855f7;
+  --accent-hover: #c084fc;
+  --danger: #fca5a5;
+
+  --card-bg: #181819;
+  --card-border: rgba(148, 163, 184, 0.35);
+  --sidebar-box-bg: #202123;
+
+  --button-bg: #40414f;
+  --button-hover-bg: #4b4d5a;
+}
+
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -57,7 +76,6 @@ body {
     color 0.3s ease;
 }
 
-/* Глобальные стили для html */
 html {
   scrollbar-width: none;
   -webkit-text-size-adjust: 100%;
@@ -70,11 +88,10 @@ html::-webkit-scrollbar {
   display: none;
 }
 
-/* Универсальное скрытие полосы прокрутки */
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-  overflow-y: auto; /* ⬅️ было scroll */
+  overflow-y: auto; 
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -83,20 +100,17 @@ html::-webkit-scrollbar {
   background: transparent;
 }
 
-/* Стабильная ширина при вертикальном скролле (анти-рывок гаттера) */
 .no-scrollbar,
 [data-templates],
 [data-cdr-selection] {
   scrollbar-gutter: stable both-edges;
 }
 
-/* Возвращаем выделение текста внутри форм */
 input, textarea, select, button, label {
   -webkit-user-select: text;
   user-select: text;
 }
 
-/* Лёгкое свечение за текстом */
 .hero-glow {
   text-shadow:
     0 1px 2px rgba(255, 255, 255, 0.15),
@@ -104,19 +118,16 @@ input, textarea, select, button, label {
     0 0 18px rgba(168, 85, 247, 0.18);
 }
 
-/* iOS zoom fix: держим ≥16px на интерактивах; без transform-хака */
 @supports (-webkit-touch-callout: none) {
   .ios-no-zoom {
     font-size: 16px;
   }
 }
 
-/* Safe-area отступ снизу */
 .pb-safe {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 
-/* === Loading: octopus pulse === */
 @layer utilities {
   @keyframes octo-pulse {
     0%   { opacity: 0.25; transform: scale(1); }
@@ -134,12 +145,10 @@ input, textarea, select, button, label {
   }
 }
 
-/* ✅ безопасно отключаем неинтерактивные оверлеи (по маркеру) */
 [data-overlay]:not([data-interactive="true"]) {
   pointer-events: none !important;
 }
 
-/* Декоративные/скрытые баннеры/бэкдропы — безопасно */
 .cookie-banner[hidden],
 .cookie-banner.is-hidden,
 #cookie-banner[hidden],
@@ -150,50 +159,40 @@ input, textarea, select, button, label {
   visibility: hidden !important;
 }
 
-/* ⬇️ FIX: возвращаем дефолтное сглаживание — убираем фликер при hover в списках */
 [data-templates],
 [data-cdr-selection] {
    -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* --- FIX: Убираем лишние will-change, которые провоцировали фликер --- */
-
-/* Маркер для заголовков файлов/элементов списков */
 .file-title::before {
   content: "• ";
   color: var(--text-secondary);
   user-select: none;
   -webkit-user-select: none;
-  pointer-events: none;     /* исключаем “промах” по псевдоэлементу */
-  /* will-change: opacity;  ← удалено */
+  pointer-events: none;     
 }
 .file-title {
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
-/* Файл/элемент списка — плавная смена цвета без флэша */
 [data-templates] [data-row] .file-title,
 [data-cdr-selection] [data-row] .file-title {
   transition: color .15s ease;
 }
 
-/* Кликабельные строки — стабильный хитбокс без промоции слоя */
 [data-templates] [data-row],
 [data-cdr-selection] [data-row] {
-  line-height: 1.25;   /* ~ Tailwind leading-5 */
+  line-height: 1.25;  
   min-height: 24px;
-  /* will-change: transform; ← удалено */
 }
 
-/* Разрешаем клики внутри панелей */
 [data-templates],
 [data-cdr-selection] {
   pointer-events: auto;
 }
 
-/* Утилита: запрещает текстовую селекцию на кликабельных строках */
 .no-select {
   user-select: none;
   -webkit-user-select: none;
@@ -208,20 +207,17 @@ input, textarea, select, button, label {
 
 .scroll-stable { overscroll-behavior: contain; }
 
-/* momentum-scroll только на iOS/touch */
 @supports (-webkit-touch-callout: none) {
   @media (hover: none) and (pointer: coarse) {
     .scroll-stable { -webkit-overflow-scrolling: touch; }
   }
 }
 
-/* === Тапы по чекбоксу без лишних жестов/подсветки на мобилках === */
 input[type="checkbox"].tap-ok {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* --- NEW: безопасный fade-оверлей вместо mask-image на контейнере списка --- */
 .scroll-fade {
   position: relative;
 }
@@ -229,30 +225,53 @@ input[type="checkbox"].tap-ok {
   content: "";
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 14%; /* эквивалент прежнему затуханию ~от 85% */
+  height: 14%; 
   pointer-events: none;
   background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, var(--background) 100%);
 }
 
-/* === FLICKER FIX (точечно для списков): выравниваем альфу акцентного цвета под базовый текст === */
-/* Светлая тема */
 html:not(.dark) [data-templates],
 html:not(.dark) [data-cdr-selection] {
-  /* #6366F1 -> rgba(99, 102, 241, 0.92) */
   --accent: rgba(99, 102, 241, 0.92);
 }
 
-/* Тёмная тема */
 .dark [data-templates],
 .dark [data-cdr-selection] {
-  /* #B98AF6 -> rgba(185, 138, 246, 0.92) */
   --accent: rgba(185, 138, 246, 0.92);
 }
 
-/* === Cross-browser mono small-caps fix === */
 .font-mono[font-variant="small-caps"],
 .font-mono.small-caps {
   -webkit-font-smoothing: subpixel-antialiased !important;
   text-rendering: geometricPrecision !important;
   letter-spacing: 0.02em !important;
+}
+
+.workspace-root * {
+  font-family: var(--font-monoBrand) !important;
+}
+
+.save-profile-modal * {
+  font-family: var(--font-monoBrand) !important;
+}
+
+
+.page-legal,
+.page-cookies,
+.page-terms,
+.page-privacy,
+.page-subscription,
+.page-cookies-settings {
+  font-family: var(--font-azeret) !important;
+  font-size: 16px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.sidebar-scroll {
+  scrollbar-width: none !important; 
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  display: none !important; 
 }

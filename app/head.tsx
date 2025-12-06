@@ -3,7 +3,7 @@ export default function Head() {
     <>
       <meta name="theme-color" content="#0B0E11" media="(prefers-color-scheme: dark)" />
       <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-      {/* ускоряем моб.видео в блоке HowItWorksVideoMobile */}
+
       <link
         rel="preload"
         as="video"
@@ -13,7 +13,6 @@ export default function Head() {
         crossOrigin="anonymous"
       />
 
-      {/* GA loader — активируется только после согласия (analytics) */}
       <script
         type="text/plain"
         data-consent="analytics"
@@ -23,7 +22,6 @@ export default function Head() {
       <script
         type="text/plain"
         data-consent="analytics"
-        // inline-инициализация тоже «спит» до согласия
         dangerouslySetInnerHTML={{
           __html: `
             window.dataLayer = window.dataLayer || [];

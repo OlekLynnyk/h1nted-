@@ -5,18 +5,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { logUserAction } from '@/lib/logger';
 
-// Локальный «рас-типизированный» клиент только для этого хука
 const sb = supabase as unknown as SupabaseClient<any>;
-
-/* ────────────────────────────────────────────────────────────────────────────
- * Types (локальные модели строк БД)
- * ──────────────────────────────────────────────────────────────────────────── */
 
 export type TemplateFolderName = string;
 
 export type TemplateItem = {
   id: string;
-  user_id: string | null; // null => system
+  user_id: string | null;
   system: boolean;
   title: string;
   content: string;
@@ -29,7 +24,7 @@ export type TemplateInput = {
   user_id: string;
   title: string;
   content: string;
-  folder?: string | null; // новые создаём вне папки, поле игнорим
+  folder?: string | null;
 };
 
 type TFolderRow = { name: string; order: number | null };
@@ -44,25 +39,15 @@ type TItemRow = {
   updated_at: string;
 };
 
-/* ────────────────────────────────────────────────────────────────────────────
- * Constants / Limits
- * ──────────────────────────────────────────────────────────────────────────── */
-
-export const SYS_FOLDERS = ['General', 'Team leadership', 'Sales', 'CDRs'] as const;
+export const SYS_FOLDERS = ['General', 'Team leadership', 'Sales'] as const;
 
 export const MAX_CUSTOM_FOLDERS = 5;
 export const FOLDER_NAME_LIMIT = 30;
 export const TEMPLATE_TITLE_LIMIT = 30;
 
-/* ────────────────────────────────────────────────────────────────────────────
- * Hook
- * ──────────────────────────────────────────────────────────────────────────── */
-
 export function useTemplates() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  /* Helpers */
 
   const isSystemFolder = (name: string | null | undefined) =>
     !!name && SYS_FOLDERS.includes(name as (typeof SYS_FOLDERS)[number]);
@@ -77,13 +62,9 @@ export function useTemplates() {
     return trimmed;
   };
 
-  /* Read */
-
-  /** Список папок: системные (в фиксированном порядке) + кастомные пользователя. */
   const getTemplateFolders = async (userId: string): Promise<TemplateFolderName[]> => {
     setError(null);
 
-    // system folders
     const sysQ = await sb
       .from('template_folders')
       .select('name, "order"')
@@ -97,7 +78,6 @@ export function useTemplates() {
     }
     const sys = (sysQ.data ?? []) as TFolderRow[];
 
-    // user custom folders
     const custQ = await sb
       .from('template_folders')
       .select('name, "order"')
@@ -115,7 +95,6 @@ export function useTemplates() {
     return [...sys.map((r) => r.name), ...custom.map((r) => r.name)];
   };
 
-  /** Список темплейтов: системные + пользовательские. */
   const getTemplates = async (userId: string): Promise<TemplateItem[]> => {
     setIsLoading(true);
     setError(null);
@@ -137,13 +116,10 @@ export function useTemplates() {
     return (res.data ?? []) as TItemRow[] as TemplateItem[];
   };
 
-  /* Folders CRUD */
-
   const createTemplateFolder = async (userId: string, name: string): Promise<void> => {
     setIsLoading(true);
     setError(null);
 
-    // лимит пользовательских папок
     const cntQ = await sb
       .from('template_folders')
       .select('id', { count: 'exact', head: true })
@@ -161,12 +137,10 @@ export function useTemplates() {
       throw new Error(`Limit reached (${MAX_CUSTOM_FOLDERS}).`);
     }
 
-    // уникальность имени
     const allFolders = await getTemplateFolders(userId);
     const existingCustom = allFolders.filter((n) => !SYS_FOLDERS.includes(n as any));
     const valid = validateFolderName(name, existingCustom);
 
-    // следующий order
     const orderQ = await sb
       .from('template_folders')
       .select('order')
@@ -308,7 +282,6 @@ export function useTemplates() {
     }
   };
 
-  /** Переупорядочить только пользовательские папки. */
   const reorderTemplateFolders = async (userId: string, orderedCustom: string[]) => {
     setIsLoading(true);
     setError(null);
@@ -342,8 +315,6 @@ export function useTemplates() {
     setIsLoading(false);
   };
 
-  /* Items CRUD */
-
   const createTemplate = async (input: TemplateInput) => {
     setIsLoading(true);
     setError(null);
@@ -363,7 +334,7 @@ export function useTemplates() {
       system: false,
       title,
       content: input.content ?? '',
-      folder: null, // по ТЗ новые – вне папки
+      folder: null,
     };
 
     const ins = await sb.from('template_items').insert([payload]);
@@ -474,7 +445,6 @@ export function useTemplates() {
     }
   };
 
-  /** Лог: пользователь вставил темплейт в инпут (для аналитики). */
   const logInsertIntoInput = async (userId: string, templateId: string, isSystem: boolean) => {
     await logUserAction({
       userId,

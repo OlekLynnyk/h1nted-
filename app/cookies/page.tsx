@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 import { COOKIES_AND_SDKS, type CookieRow } from './cookies.registry';
 
 export default function CookiePolicyPage() {
-  // ВСТАВКА №1: сортированный реестр (A→Z) — чисто для отображения
   const rows = useMemo<CookieRow[]>(
     () =>
       [...COOKIES_AND_SDKS].sort((a, b) =>
@@ -17,9 +16,8 @@ export default function CookiePolicyPage() {
   return (
     <main
       aria-labelledby="cookies-title"
-      className="relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
+      className="cookies-page relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
     >
-      {/* Верхний мягкий глоу */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 h-[140px] w-[min(760px,92%)] rounded-[999px] bg-white/5 blur-2xl"
@@ -32,7 +30,6 @@ export default function CookiePolicyPage() {
         H1NTED — Cookies Policy
       </h1>
 
-      {/* Стеклянная карточка */}
       <section
         className="
           relative rounded-3xl backdrop-blur
@@ -40,7 +37,6 @@ export default function CookiePolicyPage() {
           px-5 sm:px-8 py-6 sm:py-8 space-y-6
         "
       >
-        {/* Тонкая светящаяся полоса сверху */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-3xl bg-gradient-to-r from-transparent via-[#A855F7]/60 to-transparent"
@@ -72,7 +68,6 @@ export default function CookiePolicyPage() {
           .
         </p>
 
-        {/* Provider details — UA legal entity */}
         <p className="text-[var(--text-secondary)]">
           Provider details. ТОВАРИСТВО З ОБМЕЖЕНОЮ ВІДПОВІДАЛЬНІСТЮ «Хінтед Штучний Інтелект»
           (EDRPOU 46041011). English: Limited Liability Company "Hinted Artificial Intelligence".
@@ -168,7 +163,6 @@ export default function CookiePolicyPage() {
           </li>
         </ul>
 
-        {/* ===== 5) TABLES ===== */}
         <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
           5) Cookies and similar technologies we use
         </h2>
@@ -177,7 +171,6 @@ export default function CookiePolicyPage() {
           <span className="font-semibold text-[var(--text-primary)]">Cookie Settings</span>.
         </p>
 
-        {/* ВСТАВКА №2: динамический реестр (ничего не удаляем) */}
         <div className="overflow-x-auto mt-3">
           <table
             role="table"

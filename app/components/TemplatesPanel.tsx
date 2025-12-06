@@ -17,7 +17,6 @@ type TemplatesPanelProps = { isCdrMode?: boolean };
 const CDRS = 'CDRs' as const;
 const UNGROUPED = '__ungrouped__' as const;
 
-/** --- tap helper (без изменений) --- */
 function useTapToggle({
   onTap,
   thresh = 6,
@@ -85,11 +84,12 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
   } = useTemplates();
 
   const [folders, setFolders] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [items, setItems] = useState<TemplateItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [openSection, setOpenSection] = useState<string | null>(null);
 
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -102,7 +102,6 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
   const [editTplTitle, setEditTplTitle] = useState('');
   const [editTplContent, setEditTplContent] = useState('');
 
-  // --- refs для авто-скролла к форме
   const newFolderRef = useRef<HTMLDivElement | null>(null);
   const newTplRef = useRef<HTMLDivElement | null>(null);
   const editTplRef = useRef<HTMLDivElement | null>(null);
@@ -142,10 +141,8 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
 
   useEffect(() => {
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // --- авто-прокрутка к открытой форме (вверх панели)
   useEffect(() => {
     const el = newTplOpen
       ? newTplRef.current
@@ -155,7 +152,7 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
           ? editTplRef.current
           : null;
     if (!el) return;
-    // делаем после layout
+
     requestAnimationFrame(() => {
       el.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'smooth' });
     });
@@ -176,7 +173,7 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
 
   const systemFolders = SYS_FOLDERS as readonly string[];
   const customFolders = useMemo(
-    () => folders.filter((f) => !systemFolders.includes(f)),
+    () => folders.filter((f) => !systemFolders.includes(f) && f !== 'CDRs'),
     [folders, systemFolders]
   );
 
@@ -186,12 +183,22 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
     [items]
   );
 
-  const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  const toggle = (id: string) => {
+    setOpenSection((prev) => (prev === id ? null : id));
+  };
 
   const handleInsert = async (tpl: TemplateItem) => {
     if ((tpl.folder || '') === CDRS && !isCdrMode) return;
+
     injectPrompt(tpl.content);
-    if (userId) await logInsertIntoInput(userId, tpl.id, !!tpl.system);
+
+    if (userId) {
+      await logInsertIntoInput(userId, tpl.id, !!tpl.system);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('templates:inserted'));
+    }
   };
 
   const handleOpenEditUserTpl = (tpl: TemplateItem) => {
@@ -272,7 +279,6 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
     }
   };
 
-  /** ====== секции/строки (без изменений) ====== */
   const Section = ({
     id,
     title,
@@ -292,20 +298,22 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
           className="flex justify-between items-center px-3 py-1 cursor-pointer no-select tap-ok"
           role="button"
           tabIndex={0}
-          aria-expanded={!!expanded[id]}
+          aria-expanded={openSection === id}
           aria-controls={`tpl-sec-${id}`}
           draggable={false}
           onPointerDown={tap.onPointerDown}
           onPointerUp={tap.onPointerUp}
           onKeyDown={tap.onKeyDown}
         >
-          <span className="text-sm text-[var(--text-primary)]">{title}</span>
+          <span className="text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-primary)]">
+            {title}
+          </span>
           <span className="text-[var(--text-secondary)] text-[8px] relative top-px pointer-events-none select-none">
-            {expanded[id] ? '▲' : '▼'}
+            {openSection === id ? '▲' : '▼'}
           </span>
         </div>
 
-        {expanded[id] && (
+        {openSection === id && (
           <div id={`tpl-sec-${id}`}>
             {isEmpty ? (
               <div data-templates className="px-3 py-1 flex justify-between items-center">
@@ -364,7 +372,7 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
         onKeyDown={tap.onKeyDown}
       >
         <span
-          className={`file-title no-select select-none text-sm transition-colors duration-150 ${
+          className={`file-title no-select select-none text-[11px] font-monoBrand tracking-[0.14em] uppercase transition-colors duration-150 ${
             gated ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'
           }`}
           draggable={false}
@@ -402,7 +410,6 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
       data-templates
       style={{ scrollbarGutter: 'stable both-edges' }}
     >
-      {/* === 1) Диалоги рендерим ВВЕРХУ панели + auto-scroll к ним === */}
       {newFolderOpen && (
         <div
           ref={newFolderRef}
@@ -602,12 +609,11 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
         </div>
       )}
 
-      {/* === 2) дальше — обычные секции/списки === */}
       {systemFolders.map((name) => (
         <Section key={`sys-${name}`} id={name} title={name}>
           {(grouped.get(name) ?? []).length === 0 ? (
-            <div className="px-3 py-1 text-xs text-[var(--text-secondary)] italic">
-              No templates yet.
+            <div className="px-3 py-1 text-[10px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)] italic">
+              No personal templates yet.
             </div>
           ) : (
             (grouped.get(name) ?? []).map((tpl) => <Row key={tpl.id} tpl={tpl} />)
@@ -627,11 +633,11 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
       })}
 
       <div className="mt-1 pt-1 border-t border-[var(--card-border)]">
-        <div className="px-3 py-1 text-xs text-[var(--text-secondary)]">Templates (no folder)</div>
+        <div className="px-3 py-1 text-[10px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)]">
+          Customisation coming soon
+        </div>
         {ungroupedUser.length === 0 ? (
-          <div className="px-3 py-1 text-xs text-[var(--text-secondary)] italic">
-            No personal templates yet.
-          </div>
+          <div className="px-3 py-1 text-xs text-[var(--text-secondary)] italic"></div>
         ) : (
           ungroupedUser.map((tpl) => <Row key={tpl.id} tpl={tpl} />)
         )}

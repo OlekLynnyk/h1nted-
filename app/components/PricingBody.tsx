@@ -169,10 +169,7 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
       <div className="mx-auto max-w-[1440px] px-3 md:px-[100px]">
         <div className="relative pt-[48px] md:pt-[64px] pb-10 md:pb-16">
           {/* Мобильный заголовок, как было */}
-          <div
-            className="mb-4 text-center text-[18px] leading-[145%] text-white [font-variant-caps:small-caps] md:hidden"
-            style={{ fontFamily: FONT.family }}
-          >
+          <div className="hidden" style={{ fontFamily: FONT.family }}>
             Plans:
           </div>
 
@@ -314,6 +311,7 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
             {/* Заголовок блока сервисов (Services) */}
             <div
               className="
+                hidden md:block
                 text-center text-white [font-variant-caps:small-caps]
                 text-[18px] md:text-[26px]
                 mt-[8px] md:mt-[10px]

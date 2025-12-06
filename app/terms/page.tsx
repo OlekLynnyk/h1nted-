@@ -5,9 +5,8 @@ export default function TermsPage() {
   return (
     <main
       aria-labelledby="terms-title"
-      className="relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
+      className="terms-page relative mx-auto max-w-4xl px-6 py-16 sm:py-20 text-[var(--text-primary)]"
     >
-      {/* Верхний мягкий глоу */}
       <div
         aria-hidden
         className="pointer-events-none absolute left-1/2 top-6 -translate-x-1/2 h-[140px] w-[min(760px,92%)] rounded-[999px] bg-white/5 blur-2xl"
@@ -20,7 +19,6 @@ export default function TermsPage() {
         H1NTED — Terms of Use
       </h1>
 
-      {/* Стеклянная карточка */}
       <section
         className="
           relative rounded-3xl backdrop-blur
@@ -28,7 +26,6 @@ export default function TermsPage() {
           px-5 sm:px-8 py-6 sm:py-8 space-y-6
         "
       >
-        {/* Тонкая светящая полоска сверху */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-3xl bg-gradient-to-r from-transparent via-[#A855F7]/60 to-transparent"
@@ -43,7 +40,6 @@ export default function TermsPage() {
           accessing or using the Platform, you agree to be bound by these Terms.
         </p>
 
-        {/* Provider details — UA legal entity */}
         <p className="text-[var(--text-secondary)]">
           Provider details. ТОВАРИСТВО З ОБМЕЖЕНОЮ ВІДПОВІДАЛЬНІСТЮ «Хінтед Штучний Інтелект»
           (EDRPOU 46041011). English: Limited Liability Company "Hinted Artificial Intelligence".
@@ -63,7 +59,6 @@ export default function TermsPage() {
           .
         </p>
 
-        {/* 0A) Critical responsibilities (replaces pre-incorporation) */}
         <h2 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
           0A) Critical — Your Legal Basis &amp; Permissions
         </h2>
@@ -299,7 +294,6 @@ export default function TermsPage() {
           reverse engineer, decompile or create derivative works of the Platform.
         </p>
 
-        {/* === IP and AI training safeguards === */}
         <h3 className="text-lg font-semibold tracking-tight text-[var(--text-primary)] mt-4">
           11A) Proprietary Technology Notice
         </h3>
@@ -569,7 +563,6 @@ export default function TermsPage() {
           </p>
         </div>
 
-        {/* Низ карточки */}
         <div className="pt-4 mt-2 border-t border-[var(--card-border)]" />
       </section>
     </main>
