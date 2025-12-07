@@ -17,7 +17,6 @@ const REFRESH_DEBOUNCE_MS = 200;
 const equalStringArrays = (a: string[], b: string[]) =>
   a.length === b.length && a.every((x, i) => x === b[i]);
 
-// 👇 такой же тап-хук, как в TemplatesPanel
 function useTapToggle({
   onTap,
   thresh = 6,
@@ -43,7 +42,6 @@ function useTapToggle({
     const now = performance.now();
     cleanup();
 
-    // если выделяли текст — не считаем тапом
     if (typeof window.getSelection === 'function' && window.getSelection()?.toString()) return;
     if (dx > thresh || dy > thresh) return;
     if (now - lastAt.current < cooldownMs) return;
@@ -292,7 +290,6 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
 
   const toggleExpanded = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  // ---------- HEADER СЕКЦИИ: теперь через useTapToggle, как в TemplatesPanel ----------
   const SectionHeader = memo(({ title, id }: { title: string; id: string }) => {
     const tap = useTapToggle({
       onTap: () => toggleExpanded(id),
@@ -325,11 +322,10 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
     );
   });
 
-  // ---------- РЯД СОХРАНЁННОГО ОТЧЁТА: тапы как в TemplatesPanel, крестик отдельный ----------
   const Row = memo(({ profile }: { profile: SavedProfile }) => {
     const tap = useTapToggle({
       onTap: () => {
-        setTimeout(() => setSelectedProfile(profile), 0);
+        setSelectedProfile(profile);
       },
       thresh: 6,
       cooldownMs: 180,
@@ -352,13 +348,12 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
           className="file-title no-select select-none text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-primary)]"
           draggable={false}
         >
-          · {profile.profile_name}
+          {profile.profile_name}
         </span>
 
         <button
           type="button"
           data-interactive="true"
-          // важно: гасим события, чтобы не улетело в tap-хук строки
           onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => e.stopPropagation()}
           onClick={(e) => {

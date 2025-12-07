@@ -156,6 +156,34 @@ export default function SaveProfileModal({
     const meta = document.querySelector('meta[name="viewport"]');
     if (!meta) return;
 
+    const original = meta.getAttribute('content') || '';
+    const alreadyHas = /maximum-scale/.test(original);
+
+    if (open && !alreadyHas) {
+      meta.setAttribute('content', `${original}, maximum-scale=1, user-scalable=no`);
+    }
+
+    return () => {
+      if (!alreadyHas) meta.setAttribute('content', original);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) return;
+
     const originalContent = meta.getAttribute('content') || '';
 
     if (open) {
@@ -271,21 +299,21 @@ export default function SaveProfileModal({
     <AnimatePresence>
       {open && (
         <motion.div
+          data-overlay
           data-interactive="true"
-          className="fixed inset-0 z-50 flex justify-center items-center bg-black/30 backdrop-blur-[2px]"
-          data-modal="open"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleOutsideClick();
+          className="fixed inset-0 z-[999] flex justify-center items-center bg-black/30 backdrop-blur-[2px]"
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              handleOutsideClick();
+            }
           }}
         >
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-label="Saved profile"
+            data-interactive="true"
             onClick={(e) => e.stopPropagation()}
             className="
               save-profile-modal
@@ -311,7 +339,6 @@ export default function SaveProfileModal({
               aria-hidden
             />
 
-            {/* ⬇️ anchor for onboarding step 4 */}
             <div
               id="ws-save-modal-anchor"
               className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-1 w-1 z-[31]"
