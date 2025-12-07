@@ -68,6 +68,9 @@ export default function ChatBubble({
   const COLLAPSE_LIMIT = 200;
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const textRef = useRef<HTMLDivElement>(null);
+  const [textHeight, setTextHeight] = useState(0);
+
   const [displayedText, setDisplayedText] = useState(() => {
     if (!isUser && isStreaming) return '';
     return text;
@@ -108,6 +111,12 @@ export default function ChatBubble({
       setIsCollapsed(true);
     }
   }, [text, isUser, isStreaming]);
+
+  useEffect(() => {
+    const collapse = () => setIsCollapsed(true);
+    window.addEventListener('chat:collapseAll', collapse);
+    return () => window.removeEventListener('chat:collapseAll', collapse);
+  }, []);
 
   const isCollapsible = !isStreaming && text.length > COLLAPSE_LIMIT;
 
@@ -177,6 +186,12 @@ export default function ChatBubble({
     }
   }, []);
 
+  useEffect(() => {
+    if (textRef.current) {
+      setTextHeight(textRef.current.scrollHeight);
+    }
+  }, [shownText]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -236,10 +251,22 @@ export default function ChatBubble({
           `}
           aria-live={isUser ? undefined : 'polite'}
         >
-          <p className="text-left font-monoBrand text-[13px] tracking-[0.02em] whitespace-pre-wrap break-words">
-            {shownText || '...'}
-          </p>
-
+          <div
+            ref={textRef}
+            className="
+              transition-[max-height]
+              duration-300
+              ease-in-out
+              overflow-hidden
+            "
+            style={{
+              maxHeight: isCollapsed ? '160px' : `${textHeight}px`,
+            }}
+          >
+            <p className="text-left font-monoBrand text-[13px] tracking-[0.02em] whitespace-pre-wrap break-words">
+              {shownText || '...'}
+            </p>
+          </div>
           {isCollapsible && (
             <button
               type="button"
@@ -255,7 +282,6 @@ export default function ChatBubble({
               />
             </button>
           )}
-
           {attachments && attachments.length > 0 && (
             <ul className="space-y-2 mt-2">
               {attachments.map(

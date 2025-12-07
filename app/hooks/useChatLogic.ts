@@ -174,6 +174,7 @@ export function useChatLogic(): UseChatLogicResult {
     }
 
     if (isGenerating) return;
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('chat:collapseAll'));
 
     const bypass = bypassHistoryOnceRef.current;
     bypassHistoryOnceRef.current = false;
