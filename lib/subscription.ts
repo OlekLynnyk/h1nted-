@@ -140,8 +140,6 @@ export async function syncSubscriptionWithSupabase(
     return { plan: mapped.plan, status: 'incomplete' };
   }
 
-  // ======================= [REPLACEMENT #1 START] =======================
-  // Old block (try { ... } catch { ... }) replaced with the enhanced resolver
   let resolvedPeriodStart = mapped.periodStart;
   let resolvedPeriodEnd = mapped.periodEnd;
 
@@ -154,7 +152,6 @@ export async function syncSubscriptionWithSupabase(
 
     const invoice = typeof li === 'string' ? await stripe.invoices.retrieve(li) : (li as any);
 
-    // Try to resolve period from the first invoice line if missing on subscription
     const line0 = (invoice?.lines?.data?.[0] as any) ?? null;
     if (!resolvedPeriodStart && line0?.period?.start != null) {
       resolvedPeriodStart = toIsoFromStripeTs(line0.period.start);
@@ -185,9 +182,7 @@ export async function syncSubscriptionWithSupabase(
   } catch {
     return { plan: mapped.plan, status: 'incomplete' };
   }
-  // ======================= [REPLACEMENT #1 END] =========================
 
-  // ======================= [NEW BLOCK START] ============================
   const { data: existing, error: readErr } = await supabase
     .from('user_subscription')
     .select('stripe_price_id, plan, current_period_start')
@@ -209,10 +204,10 @@ export async function syncSubscriptionWithSupabase(
     stripe_subscription_id: subscription.id,
     stripe_price_id: mapped.priceId,
     status: mapped.status,
-    // ======================= [REPLACEMENT #2 START] =======================
+
     subscription_ends_at: resolvedPeriodEnd ?? null,
     current_period_start: resolvedPeriodStart ?? null,
-    // ======================= [REPLACEMENT #2 END] =========================
+
     cancel_at_period_end:
       typeof subscription.cancel_at_period_end === 'boolean'
         ? subscription.cancel_at_period_end
@@ -257,5 +252,4 @@ export async function syncSubscriptionWithSupabase(
   }
 
   return { plan: mapped.plan, status: mapped.status };
-  // ======================= [NEW BLOCK END] ==============================
 }

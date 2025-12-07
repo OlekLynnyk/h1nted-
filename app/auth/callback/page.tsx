@@ -12,12 +12,11 @@ export default function CallbackPage() {
   useEffect(() => {
     const run = async () => {
       try {
-        // 👇 если открылись на www.*, перенаправляем на apex с сохранением query
         if (typeof window !== 'undefined' && window.location.hostname.startsWith('www.')) {
           const u = new URL(window.location.href);
           u.hostname = u.hostname.replace(/^www\./, '');
           window.location.replace(u.toString());
-          return; // дальше не выполняем — продолжим уже на apex домене
+          return;
         }
 
         try {
@@ -34,8 +33,6 @@ export default function CallbackPage() {
         }
 
         try {
-          // Читаем флаг из localStorage, но если пусто — всё равно шлём true,
-          // так как в модалке кнопка недоступна без согласия
           const agreedFlag = localStorage.getItem('agreed_to_terms');
           const agreedToTerms = agreedFlag === 'true' ? 'true' : 'true';
 
@@ -50,7 +47,6 @@ export default function CallbackPage() {
           console.warn('Failed to call /api/user/init:', err);
         }
 
-        // 🔔 сигнализируем другим вкладкам/окнам (не влияет на редирект)
         try {
           if (window.opener) {
             window.opener.postMessage(
@@ -66,8 +62,6 @@ export default function CallbackPage() {
           localStorage.setItem('h1nted_auth_ping', String(Date.now()));
         } catch {}
 
-        // ✅ ЕДИНСТВЕННАЯ ПРАВКА: корректный финальный редирект
-        // ✅ Корректный финальный редирект (без регрессий)
         try {
           const url = new URL(window.location.href);
           const qRedirect = url.searchParams.get('redirect');

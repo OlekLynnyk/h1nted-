@@ -1,5 +1,3 @@
-// isomorphic: can be imported from server and client
-
 import {
   createPagesBrowserClient,
   createServerComponentClient,

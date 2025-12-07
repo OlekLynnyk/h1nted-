@@ -7,13 +7,10 @@ import { Database } from '@/types/supabase';
 export type LimitsResetMode = 'none' | 'daily' | 'monthly' | 'all';
 
 type UpdateUserLimitsOptions = {
-  /** Политика сброса счётчиков; по умолчанию не сбрасываем. */
   reset?: LimitsResetMode;
-  /** Необязательная причина для логов/аудита. */
   reason?: string;
 };
 
-/** Тип строки user_limits из сгенерённых Supabase-типов (с фоллбеком). */
 type UserLimitsRow = Database extends { public: any }
   ? Database['public']['Tables']['user_limits']['Row']
   : {
@@ -30,14 +27,6 @@ type UserLimitsRow = Database extends { public: any }
       updated_at: string | null;
     };
 
-/**
- * Обновляет лимиты пользователя под новый план.
- * После рефакторинга:
- *  - игнорирует opts.reset (с предупреждением в консоль);
- *  - обновляет ТОЛЬКО квоты: plan, daily_limit, monthly_limit, updated_at;
- *  - insert/update без перетирания created_at;
- *  - НЕ трогает used_*, *_reset_at, active.
- */
 export async function updateUserLimits(
   supabase: SupabaseClient<Database>,
   plan: ValidPackageType,
@@ -51,7 +40,6 @@ export async function updateUserLimits(
     );
   }
 
-  // 1) userId из контекста, если не передан
   if (!userId) {
     const {
       data: { user },
@@ -67,7 +55,6 @@ export async function updateUserLimits(
   const planLimits = PACKAGE_LIMITS[plan];
   const now = new Date().toISOString();
 
-  // 2) Берём текущую запись СТРОГО типизированно
   const { data: existing, error: readErr } = await supabase
     .from('user_limits')
     .select(
@@ -92,7 +79,6 @@ export async function updateUserLimits(
     console.error('⚠️ Failed to fetch user_limits (proceeding with insert/update):', readErr);
   }
 
-  // 3) ТОЛЬКО квоты (без used_*, *_reset_at, active)
   const quotasPayload = {
     plan,
     daily_limit: planLimits.dailyGenerations,
@@ -100,7 +86,6 @@ export async function updateUserLimits(
     updated_at: now,
   } as const;
 
-  // 4) Вставка/обновление без перетирания created_at
   if (!existing) {
     const insertPayload = {
       user_id: userId,

@@ -7,7 +7,6 @@ export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const path = url.pathname;
 
-  // ❌ 0) Пропускаем стримы и Stripe
   const isBypassedPath = path.startsWith('/api/ai/') || path.startsWith('/api/stripe/');
   if (isBypassedPath) {
     const passthrough = NextResponse.next({ request: { headers: req.headers } });
@@ -15,7 +14,6 @@ export async function middleware(req: NextRequest) {
     return passthrough;
   }
 
-  // 🌐 0.1 Канонический хост: www -> apex (308 сохраняет метод/тело)
   const host = req.headers.get('host') || url.host;
   if (host === 'www.h1nted.com') {
     const redirectUrl = url.clone();
@@ -31,11 +29,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(clean, 307);
   }
 
-  // ✅ 1) Нормальный поток
   const res = NextResponse.next({ request: { headers: req.headers } });
   res.headers.set('x-trace-id', traceId);
 
-  // 🛡️ CSP (Report-Only) — мониторинг без блокировок
   const reportOnlyCSP = `
     default-src 'self' https: data: blob:;
     base-uri 'self';
@@ -58,7 +54,6 @@ export async function middleware(req: NextRequest) {
 
   const supabase = createMiddlewareClient({ req, res });
 
-  // 💥 Обязательное обновление куков
   const isReturningFromCheckout = req.nextUrl.searchParams.get('checkout') === 'success';
 
   let {
@@ -76,20 +71,28 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 🔐 Защита приватных путей (например: /workspace)
   const protectedPaths = ['/workspace', '/settings'];
   const isProtected = protectedPaths.some((prefix) => path.startsWith(prefix));
 
-  // ✅ Если есть сессия, дополнительно проверяем подтверждение email
   if (session) {
-    const { data: userData } = await supabase.auth
-      .getUser()
-      .catch(() => ({ data: { user: null } as any }));
-    const isVerified = !!userData?.user?.email_confirmed_at;
-    if (!isVerified) {
-      const loginUrl = new URL('/login', req.url);
-      loginUrl.searchParams.set('unverified', '1');
-      return NextResponse.redirect(loginUrl);
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser().catch((err) => ({ data: { user: null }, error: err }) as any);
+
+    if (error || !user) {
+      try {
+        await supabase.auth.signOut();
+      } catch {}
+      session = null;
+    } else {
+      const isVerified = !!user.email_confirmed_at;
+
+      if (!isVerified && !path.startsWith('/login')) {
+        const loginUrl = new URL('/login', req.url);
+        loginUrl.searchParams.set('unverified', '1');
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 
