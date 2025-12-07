@@ -459,8 +459,20 @@ export default function WorkspacePage() {
   const submit = async () => {
     const hasInput = inputValue.trim() !== '';
     const hasFiles = attachedFiles.length > 0;
+
+    if (chatMode === 'image') {
+      if (attachedFiles.length === 0) {
+        alert('Please attach an image for analysis.');
+        return;
+      }
+      if (attachedFiles.length > 1) {
+        setAttachmentError('Only one image can be analysed at a time.');
+        return;
+      }
+    }
+
     if (!isCdrMode && chatMode === 'none' && attachedFiles.length === 0) {
-      alert('Please select how you want to interact: Chat or AI Discernment.');
+      alert('Please attach an image for analysis.');
       return;
     }
 
@@ -470,14 +482,6 @@ export default function WorkspacePage() {
     }
     if (hasReachedDailyLimit) {
       setShowDailyModal(true);
-      return;
-    }
-
-    if (chatMode === 'image' && attachedFiles.length > 0 && messages.length > 0) {
-      pendingInputRef.current = inputValue;
-      pendingFilesRef.current = attachedFiles;
-      setConfirmMode('pregenerate');
-      setShowConfirm(true);
       return;
     }
 
@@ -552,23 +556,45 @@ export default function WorkspacePage() {
         queueMicrotask(() => setIsDragging(false));
         return;
       }
-    }
+    } else {
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length === 0) {
+        setIsDragging(false);
+        return;
+      }
 
-    if (e.dataTransfer.files.length) {
+      if (files.length > 1) {
+        setAttachmentError('Only one image allowed. The first image is used.');
+      } else {
+        setAttachmentError('');
+      }
+
+      const [first] = files;
+
+      attachedFiles.forEach((f) => handleFileRemove(f));
+
+      const dt = new DataTransfer();
+      dt.items.add(first);
+
       const event = {
-        target: { files: e.dataTransfer.files },
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
+        target: { files: dt.files },
+      } as any;
 
       handleFileChange(event);
       triggerFirstImage();
-      setIsDragging(false);
-      queueMicrotask(() => setIsDragging(false));
 
       setIsImageActive(true);
       setIsChatActive(false);
       setChatMode('image');
       setProfilingMode(true);
+
+      setIsDragging(false);
+      queueMicrotask(() => setIsDragging(false));
+      return;
     }
+
+    setIsDragging(false);
+    queueMicrotask(() => setIsDragging(false));
   };
 
   if (isLoading) return <GlobalLoading />;
@@ -727,6 +753,10 @@ export default function WorkspacePage() {
                         status={messageStatuses[msg.id]}
                         rating={messageRatings[msg.id]}
                         onRate={handleRate}
+                        isAfterAssistant={
+                          msg.role === 'user' && messages[i - 1]?.role === 'assistant'
+                        }
+                        isStreaming={msg.isStreaming}
                       />
                     </Suspense>
                     {generationError && generationError.index === i && (
@@ -922,10 +952,29 @@ export default function WorkspacePage() {
                         type="file"
                         className="hidden"
                         accept="image/*"
-                        multiple={!isCdrMode}
-                        disabled={imageBlockedByCdrs || (isCdrMode && attachedFiles.length >= 1)}
+                        multiple={false}
                         onChange={(e) => {
-                          handleFileChange(e);
+                          const files = Array.from(e.target.files || []);
+                          if (files.length === 0) return;
+
+                          if (files.length > 1) {
+                            setAttachmentError('Only one image allowed.');
+                          } else {
+                            setAttachmentError('');
+                          }
+
+                          const [first] = files;
+
+                          attachedFiles.forEach((f) => handleFileRemove(f));
+
+                          const dt = new DataTransfer();
+                          dt.items.add(first);
+
+                          const event = {
+                            target: { files: dt.files },
+                          } as any;
+
+                          handleFileChange(event);
                           triggerFirstImage();
                         }}
                       />

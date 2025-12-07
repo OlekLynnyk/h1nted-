@@ -13,6 +13,7 @@ export type ChatMessage = {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  isStreaming?: boolean;
 };
 
 type Status = 'pending' | 'done' | 'error';
@@ -28,7 +29,7 @@ export interface UseChatLogicResult {
     options?: {
       mode?: 'cdrs' | 'image' | 'chat';
       savedMessageIds?: string[];
-      cdrDisplay?: { id: string; profile_name: string }[]; // только для UI
+      cdrDisplay?: { id: string; profile_name: string }[];
     }
   ) => Promise<void>;
   handleRate: (messageId: string, rating: Rating) => Promise<void>;
@@ -128,6 +129,7 @@ export function useChatLogic(): UseChatLogicResult {
           role: row.role === 'ai' ? 'assistant' : row.role,
           content: row.content,
           timestamp: row.timestamp,
+          isStreaming: false,
         })) as ChatMessage[];
 
         applyFilteredMessages(restored);
@@ -178,18 +180,11 @@ export function useChatLogic(): UseChatLogicResult {
 
     const baseMessages: ChatMessage[] = bypass ? [] : messages;
 
-    if (profilingMode && historyLoaded && messages.length > 0 && !bypass) {
-      setErrorMessage('Clear history before starting a new AI DISCERNMENT session.');
-      return;
-    }
-
     const traceId = uuidv4();
 
     let activeProfileId = currentProfileId;
 
-    if (profilingMode) {
-      activeProfileId = await createNewProfileId();
-    } else if (!activeProfileId) {
+    if (!activeProfileId) {
       activeProfileId = await createNewProfileId();
     }
 
@@ -315,6 +310,7 @@ export function useChatLogic(): UseChatLogicResult {
         role: 'assistant',
         content: aiText,
         timestamp: Date.now(),
+        isStreaming: true,
       };
 
       await supabase.from('chat_messages').insert([

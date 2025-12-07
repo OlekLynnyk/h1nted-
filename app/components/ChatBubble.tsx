@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Copy, ThumbsUp, ThumbsDown, FileText } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, FileText, ChevronDown } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 
@@ -23,6 +23,8 @@ interface ChatBubbleProps {
   status?: 'pending' | 'done' | 'error';
   rating?: 'up' | 'down' | null;
   onRate?: (messageId: string, rating: 'up' | 'down' | null) => void;
+  isAfterAssistant?: boolean;
+  isStreaming?: boolean;
 }
 
 export default function ChatBubble({
@@ -33,13 +35,10 @@ export default function ChatBubble({
   status,
   rating,
   onRate,
+  isAfterAssistant,
+  isStreaming,
 }: ChatBubbleProps) {
   const isUser = role === 'user';
-  const [displayedText, setDisplayedText] = useState(isUser ? '' : '');
-  const [copied, setCopied] = useState(false);
-  const [voiceOpen, setVoiceOpen] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const voiceWrapRef = useRef<HTMLDivElement>(null);
 
   let attachments: Attachment[] | null = null;
   let cdrs: CdrRef[] | null = null;
@@ -66,49 +65,63 @@ export default function ChatBubble({
     text = '';
   }
 
+  const COLLAPSE_LIMIT = 200;
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const [displayedText, setDisplayedText] = useState(() => {
+    if (!isUser && isStreaming) return '';
+    return text;
+  });
+
   useEffect(() => {
-    if (isUser) return;
-    if (attachments?.length) {
+    if (isUser || !isStreaming) {
       setDisplayedText(text);
       return;
     }
 
-    const connection = (navigator as any).connection;
-    const isSlow = connection?.effectiveType && ['2g', '3g'].includes(connection.effectiveType);
-    const isWeak = connection?.downlink && connection.downlink < 0.8;
-    const isOffline = typeof navigator.onLine === 'boolean' && !navigator.onLine;
+    setDisplayedText('');
+    let i = 0;
+    const full = text;
+    const step = 2;
+    const delay = 15 + Math.random() * 35;
 
-    const msPerChar = isSlow || isWeak || isOffline ? 25 : 10;
-
-    const startedAtRef = { current: performance.now() };
-
-    const render = () => {
-      const elapsed = performance.now() - startedAtRef.current;
-      const targetLen = Math.min(text.length, Math.floor(elapsed / msPerChar));
-      setDisplayedText(text.slice(0, targetLen));
-      return targetLen;
-    };
-
-    render();
-
-    const interval = setInterval(() => {
-      const done = render() >= text.length;
-      if (done) clearInterval(interval);
-    }, 16);
-
-    const onVis = () => {
-      if (!document.hidden) {
-        const done = render() >= text.length;
-        if (done) clearInterval(interval);
+    const timer = setInterval(() => {
+      i += step;
+      setDisplayedText(full.slice(0, i));
+      if (i >= full.length) {
+        clearInterval(timer);
       }
-    };
-    document.addEventListener('visibilitychange', onVis);
+    }, delay);
 
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [text, isUser, attachments?.length]);
+    return () => clearInterval(timer);
+  }, [text, isStreaming, isUser]);
+
+  useEffect(() => {
+    if (!isUser && isStreaming) {
+      setIsCollapsed(false);
+      return;
+    }
+
+    if (text.length <= COLLAPSE_LIMIT) {
+      setIsCollapsed(false);
+    } else {
+      setIsCollapsed(true);
+    }
+  }, [text, isUser, isStreaming]);
+
+  const isCollapsible = !isStreaming && text.length > COLLAPSE_LIMIT;
+
+  const currentText = !isUser && isStreaming ? displayedText : text;
+
+  const shownText =
+    isCollapsible && isCollapsed
+      ? currentText.slice(0, COLLAPSE_LIMIT) + (currentText.length > COLLAPSE_LIMIT ? '…' : '')
+      : currentText;
+
+  const [copied, setCopied] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const voiceWrapRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = async () => {
     try {
@@ -169,7 +182,10 @@ export default function ChatBubble({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-      className={`w-full py-1 flex ${isUser ? 'justify-end' : 'justify-start'}`}
+      className={`w-full py-2 flex ${isUser ? 'justify-end' : 'justify-start'} ${
+        isUser && isAfterAssistant ? 'mt-6' : 'mt-1'
+      }`}
+      onDoubleClick={isCollapsible ? () => setIsCollapsed((v) => !v) : undefined}
     >
       <div className="flex flex-col max-w-full sm:max-w-[80%] text-left">
         {isUser && cdrs && cdrs.length > 0 && (
@@ -221,8 +237,24 @@ export default function ChatBubble({
           aria-live={isUser ? undefined : 'polite'}
         >
           <p className="text-left font-monoBrand text-[13px] tracking-[0.02em] whitespace-pre-wrap break-words">
-            {(isUser ? text : displayedText) || '...'}
+            {shownText || '...'}
           </p>
+
+          {isCollapsible && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsCollapsed((v) => !v);
+              }}
+              className="mt-1 ml-auto flex items-center gap-1 text-[11px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            >
+              <span>{isCollapsed ? 'Expand' : 'Collapse'}</span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform ${!isCollapsed ? 'rotate-180' : ''}`}
+              />
+            </button>
+          )}
 
           {attachments && attachments.length > 0 && (
             <ul className="space-y-2 mt-2">
@@ -249,7 +281,6 @@ export default function ChatBubble({
           )}
         </div>
 
-        {/* ✅ CONTROLS */}
         {!isUser && (
           <div
             className="flex items-center justify-start space-x-[10px] mt-2 pl-4 text-[var(--text-secondary)] text-[13px] flex-nowrap"
@@ -292,14 +323,16 @@ export default function ChatBubble({
                 </TooltipContent>
               </Tooltip>
 
-              {/* ✅ Read Aloud Button with Voice Menu */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
                     ref={voiceWrapRef}
                     className="relative ml-2 sm:ml-2 mr-2"
                     style={{
-                      marginLeft: window.innerWidth < 768 ? 'auto' : undefined,
+                      marginLeft:
+                        typeof window !== 'undefined' && window.innerWidth < 768
+                          ? 'auto'
+                          : undefined,
                     }}
                   >
                     <button
@@ -338,7 +371,6 @@ export default function ChatBubble({
                       </svg>
                     </button>
 
-                    {/* 🗣️ Voice Selection Menu */}
                     <div
                       className={`absolute ${voiceOpen ? '' : 'hidden'} z-50
                         bg-[var(--surface)] border border-gray-200 rounded-lg shadow-md
@@ -398,7 +430,6 @@ export default function ChatBubble({
                               utter.pitch = 1;
                               speechSynthesis.speak(utter);
 
-                              // ✅ начинаем воспроизведение
                               utter.onstart = () => setIsSpeaking(true);
                               utter.onend = () => setIsSpeaking(false);
                               speechSynthesis.speak(utter);
