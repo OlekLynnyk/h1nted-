@@ -439,7 +439,7 @@ export default function WorkspacePage() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       submit();
     }
@@ -896,7 +896,6 @@ export default function WorkspacePage() {
                     placeholder="Ask anything"
                     disabled={isDragging}
                     inputMode="text"
-                    enterKeyHint="send"
                     className="
                       w-full px-4 py-2
                       ios-no-zoom
