@@ -100,6 +100,12 @@ export function DesktopSidebar({
     }
   }, [expanded]);
 
+  React.useEffect(() => {
+    if (isUserMenuOpen && activeBox !== null) {
+      setIsUserMenuOpen(false);
+    }
+  }, [activeBox]);
+
   const handleSidebarClick = (event: React.MouseEvent) => {
     if (!expanded) {
       onToggle();

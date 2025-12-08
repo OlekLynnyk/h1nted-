@@ -153,22 +153,6 @@ export default function SaveProfileModal({
   }, [open]);
 
   useEffect(() => {
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) return;
-
-    const original = meta.getAttribute('content') || '';
-    const alreadyHas = /maximum-scale/.test(original);
-
-    if (open && !alreadyHas) {
-      meta.setAttribute('content', `${original}, maximum-scale=1, user-scalable=no`);
-    }
-
-    return () => {
-      if (!alreadyHas) meta.setAttribute('content', original);
-    };
-  }, [open]);
-
-  useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -177,24 +161,6 @@ export default function SaveProfileModal({
 
     return () => {
       document.body.style.overflow = '';
-    };
-  }, [open]);
-
-  useEffect(() => {
-    const meta = document.querySelector('meta[name="viewport"]');
-    if (!meta) return;
-
-    const originalContent = meta.getAttribute('content') || '';
-
-    if (open) {
-      const patched = originalContent.includes('maximum-scale')
-        ? originalContent
-        : `${originalContent}, maximum-scale=1, user-scalable=no`;
-      meta.setAttribute('content', patched);
-    }
-
-    return () => {
-      meta.setAttribute('content', originalContent);
     };
   }, [open]);
 
@@ -339,11 +305,6 @@ export default function SaveProfileModal({
               aria-hidden
             />
 
-            <div
-              id="ws-save-modal-anchor"
-              className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 h-1 w-1 z-[31]"
-            />
-
             <AmbientBackdrop src="/images/ambient.png" />
 
             <div className="flex justify-between items-center mb-5">
@@ -382,7 +343,6 @@ export default function SaveProfileModal({
                 </button>
                 <button
                   type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     onClose();

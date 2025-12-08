@@ -38,12 +38,20 @@ function useTapToggle({
 
   const handleUp = (e: PointerEvent) => {
     if (!start.current) return cleanup();
+
     const dx = Math.abs(e.clientX - start.current.x);
     const dy = Math.abs(e.clientY - start.current.y);
     const now = performance.now();
+
     cleanup();
 
+    // если выделен текст — не считаем за тап
     if (typeof window.getSelection === 'function' && window.getSelection()?.toString()) return;
+
+    // если отпускаем на интерактивном элементе (кнопки с data-interactive="true") — не триггерим onTap
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('[data-interactive="true"]')) return;
+
     if (dx > thresh || dy > thresh) return;
     if (now - lastAt.current < cooldownMs) return;
 
@@ -306,13 +314,12 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
 
     return (
       <div
-        className="relative z-0 flex justify-between items-center px-3 py-1 cursor-pointer no-select tap-ok leading-5 min-h-[24px]"
+        className="relative z-0 flex justify-between items-center px-3 py-1 cursor-pointer no-select leading-5 min-h-[24px]"
         role="button"
         tabIndex={0}
         aria-expanded={!!expanded[id]}
         aria-controls={panelId}
         draggable={false}
-        style={{ touchAction: 'pan-y' }}
         onPointerDown={tap.onPointerDown}
         onPointerUp={tap.onPointerUp}
         onKeyDown={tap.onKeyDown}
@@ -342,8 +349,7 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
         role="button"
         tabIndex={0}
         aria-label={profile.profile_name}
-        className="flex justify-between items-center px-3 py-1 cursor-pointer no-select tap-ok leading-5 min-h-[24px]"
-        style={{ touchAction: 'pan-y' }}
+        className="flex justify-between items-center px-3 py-1 cursor-pointer no-select leading-5 min-h-[24px]"
         draggable={false}
         onPointerDown={tap.onPointerDown}
         onPointerUp={tap.onPointerUp}
@@ -365,7 +371,14 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
             e.stopPropagation();
             handleDelete(profile.id);
           }}
-          className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-base"
+          className="
+            flex items-center justify-center
+            w-6 h-6
+            rounded-full
+            text-[var(--text-secondary)]
+            hover:text-[var(--danger)]
+            text-base
+          "
           aria-label="Delete saved profile"
           title="Delete"
         >
@@ -485,14 +498,24 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
 
                     {!SYSTEM_BLOCKS.includes(folderName) && (
                       <button
+                        type="button"
+                        data-interactive="true"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteFolder(folderName);
                         }}
-                        className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-sm scale-75"
+                        className="
+                          flex items-center justify-center
+                          w-6 h-6
+                          rounded-full
+                          text-[var(--text-secondary)]
+                          hover:text-[var(--danger)]
+                          text-sm
+                        "
                         aria-label={`Delete block ${folderName}`}
                         title="Delete block"
-                        type="button"
                       >
                         ✕
                       </button>
