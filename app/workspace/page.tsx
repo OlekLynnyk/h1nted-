@@ -907,11 +907,11 @@ export default function WorkspacePage() {
                       focus:outline-none focus:ring-0
 
                       font-monoBrand
-                      text-[11px]
+                      text-[12px]
                       tracking-[0.14em]
                       uppercase
 
-                      placeholder:text-[11px]
+                      placeholder:text-[12px]
                       placeholder:font-monoBrand
                       placeholder:tracking-[0.14em]
                       placeholder:uppercase
