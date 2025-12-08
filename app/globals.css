@@ -121,13 +121,14 @@ input, textarea, select, button, label {
 @supports (-webkit-touch-callout: none) {
   @media (hover: none) and (pointer: coarse) {
     .ios-no-zoom {
-      font-size: 16px;
+      font-size: 16px !important;
 
-      transform-origin: top left;
-      transform: scale(0.75);
+      -webkit-text-size-adjust: 75%;
+      text-size-adjust: 75%;
     }
   }
 }
+
 
 .pb-safe {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
