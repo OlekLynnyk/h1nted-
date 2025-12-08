@@ -608,7 +608,7 @@ export default function WorkspacePage() {
       <SessionBridge />
 
       <div
-        className="workspace-root flex h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-500 relative overflow-hidden"
+        className="workspace-root flex min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-500 relative overflow-x-hidden"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
