@@ -283,6 +283,9 @@ export default function WorkspacePage() {
 
   const { saveProfile, getFolders } = useSavedProfiles();
 
+  const lastSavedMessageIdRef = useRef<string | null>(null);
+  const autoSaveEnabledRef = useRef(false);
+
   const {
     ready,
     showStep1,
@@ -434,6 +437,36 @@ export default function WorkspacePage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showConfirm, showMoreDropdown]);
 
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    if (!autoSaveEnabledRef.current) return;
+
+    if (!messages.length) return;
+
+    const last = [...messages].reverse().find((m) => m.role === 'assistant' && !m.isStreaming);
+
+    if (!last) return;
+
+    if (lastSavedMessageIdRef.current === last.id) return;
+
+    lastSavedMessageIdRef.current = last.id;
+
+    const filename = `DR ${new Date().toLocaleDateString('en-GB')}`;
+
+    saveProfile({
+      user_id: userId,
+      profile_name: filename,
+      chat_json: {
+        ai_response: last.content,
+        user_comments: '',
+      },
+      saved_at: Date.now(),
+      folder: 'Universal Archive',
+    }).catch(console.error);
+  }, [messages, session?.user?.id]);
+
   const handleLogoutConfirm = () => {
     if (window.confirm('Are you sure you want to return to the home page?')) router.push('/');
   };
@@ -459,6 +492,8 @@ export default function WorkspacePage() {
   const submit = async () => {
     const hasInput = inputValue.trim() !== '';
     const hasFiles = attachedFiles.length > 0;
+
+    autoSaveEnabledRef.current = true;
 
     if (chatMode === 'image') {
       if (attachedFiles.length === 0) {
@@ -608,7 +643,7 @@ export default function WorkspacePage() {
       <SessionBridge />
 
       <div
-        className="workspace-root flex min-h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-500 relative overflow-x-hidden"
+        className="workspace-root flex h-[100dvh] bg-[var(--background)] text-[var(--foreground)] transition-colors duration-500 relative overflow-hidden"
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
       >
@@ -1277,7 +1312,7 @@ export default function WorkspacePage() {
                   user_comments: comments,
                 },
                 saved_at: Date.now(),
-                folder: selectedFolder ?? null,
+                folder: selectedFolder ?? 'Universal Archive',
               });
 
               setShowSaveModal(false);

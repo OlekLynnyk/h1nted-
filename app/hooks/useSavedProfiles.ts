@@ -12,11 +12,7 @@ export interface SavedProfile {
   chat_json: {
     ai_response: string;
     user_comments: string;
-    // ↓ если когда-либо понадобится хранить внутри JSON (fallback),
-    //   не ломая схему БД:
-    // meta?: { folder?: string | null }
   };
-  // ↓ новое поле из БД (аддитивно, безопасно)
   folder?: string | null;
 }
 
@@ -27,27 +23,19 @@ export interface SavedProfileInput {
   chat_json: {
     ai_response: string;
     user_comments: string;
-    // meta?: { folder?: string | null }
   };
-  // ↓ опционально можно задавать при сохранении
   folder?: string | null;
 }
 
-// Для работы с пользовательскими блоками
-export type SavedBlockName = string; // ограничим валидатором
+export type SavedBlockName = string & {};
 const RESERVED_CDRS_BLOCK = 'CDRs';
+const DEFAULT_ALL_FOLDER = 'Universal Archive';
 const MAX_BLOCKS = 15;
 const NAME_LIMIT = 30;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Hook
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function useSavedProfiles() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // ── Существующие методы (НЕ менял сигнатуры и логику)
 
   const getSavedProfiles = async (userId: string): Promise<SavedProfile[]> => {
     setIsLoading(true);
@@ -131,7 +119,6 @@ export function useSavedProfiles() {
     setIsLoading(true);
     setError(null);
 
-    // 1) узнаём текущего пользователя из клиентской сессии
     const {
       data: { user },
       error: authErr,
@@ -143,7 +130,6 @@ export function useSavedProfiles() {
       throw new Error('Unauthorized');
     }
 
-    // 2) удаляем ТОЛЬКО свою запись; RLS дополнительно это проверит
     const { error } = await supabase
       .from('saved_chats')
       .delete()
@@ -157,7 +143,6 @@ export function useSavedProfiles() {
     }
   };
 
-  // Порядок блоков — в user_metadata с локальным fallback (не ломает архитектуру)
   const getBlocksOrder = async (userId: string): Promise<SavedBlockName[]> => {
     try {
       const { data, error } = await supabase.auth.getUser();
@@ -177,14 +162,12 @@ export function useSavedProfiles() {
   const setBlocksOrder = async (userId: string, order: SavedBlockName[]): Promise<void> => {
     try {
       await supabase.auth.updateUser({ data: { saved_blocks_order: order } });
-      // удачно записали на сервер — чистим локалку
       localStorage.removeItem(`savedBlocksOrder:${userId}`);
     } catch {
       localStorage.setItem(`savedBlocksOrder:${userId}`, JSON.stringify(order));
     }
   };
 
-  // Валидатор имени блока
   const validateFolderName = (name: string, existing: string[]) => {
     const trimmed = (name || '').trim();
     if (!trimmed) throw new Error('Block name cannot be empty.');
@@ -194,7 +177,6 @@ export function useSavedProfiles() {
     return trimmed;
   };
 
-  // Создать блок
   const createFolder = async (userId: string, name: string): Promise<void> => {
     const order = await getBlocksOrder(userId);
     if (order.length >= MAX_BLOCKS) throw new Error(`Limit reached (${MAX_BLOCKS}).`);
@@ -204,7 +186,6 @@ export function useSavedProfiles() {
     await logUserAction({ userId, action: 'folder:create', metadata: { name: valid } });
   };
 
-  // Переименовать блок
   const renameFolder = async (userId: string, oldName: string, nextName: string): Promise<void> => {
     const order = await getBlocksOrder(userId);
     if (!order.includes(oldName)) throw new Error('Block not found.');
@@ -213,11 +194,9 @@ export function useSavedProfiles() {
       order.filter((n) => n !== oldName)
     );
 
-    // 1) обновляем порядок
     const nextOrder = order.map((n) => (n === oldName ? valid : n));
     await setBlocksOrder(userId, nextOrder);
 
-    // 2) батч-обновление saved_chats.folder
     const { error } = await supabase
       .from('saved_chats')
       .update({ folder: valid })
@@ -232,13 +211,12 @@ export function useSavedProfiles() {
     });
   };
 
-  // Удалить блок (по умолчанию — только если пустой)
   const deleteFolder = async (userId: string, name: string): Promise<void> => {
-    if (name === RESERVED_CDRS_BLOCK) throw new Error('Cannot delete reserved block.');
+    if (name === RESERVED_CDRS_BLOCK || name === DEFAULT_ALL_FOLDER)
+      throw new Error('Cannot delete reserved block.');
     const order = await getBlocksOrder(userId);
     if (!order.includes(name)) throw new Error('Block not found.');
 
-    // Проверяем, пустой ли блок
     const { data, error } = await supabase
       .from('saved_chats')
       .select('id')
@@ -254,7 +232,6 @@ export function useSavedProfiles() {
     await logUserAction({ userId, action: 'folder:delete', metadata: { name } });
   };
 
-  // Переупорядочить блоки
   const reorderFolders = async (userId: string, nextOrder: SavedBlockName[]): Promise<void> => {
     if (nextOrder.length > MAX_BLOCKS) throw new Error(`Limit reached (${MAX_BLOCKS}).`);
     if (nextOrder.includes(RESERVED_CDRS_BLOCK))
@@ -267,41 +244,41 @@ export function useSavedProfiles() {
     });
   };
 
-  // Переместить запись между блоками
   const moveProfileToFolder = async (profileId: string, folder: string | null): Promise<void> => {
     if (folder === RESERVED_CDRS_BLOCK) throw new Error("You can't move items into CDRs.");
     const { error } = await supabase.from('saved_chats').update({ folder }).eq('id', profileId);
     if (error) throw error;
   };
 
-  // Список блоков для текущего пользователя
   const getFolders = async (userId: string): Promise<SavedBlockName[]> => {
-    // Собираем уникальные имена из данных пользователя
     const { data, error } = await supabase
       .from('saved_chats')
       .select('folder')
       .eq('user_id', userId);
     if (error) return [RESERVED_CDRS_BLOCK];
 
-    const unique = new Set<string>();
-    (data || []).forEach((row: any) => {
-      const f = row?.folder ?? null;
-      if (f && typeof f === 'string' && f !== RESERVED_CDRS_BLOCK) unique.add(f);
-    });
-
     const order = await getBlocksOrder(userId);
-    // показываем порядок как есть (включая пустые папки)
     const ordered = order;
 
-    const rest = Array.from(unique)
+    const allFolders = (data || []).map((item) => item.folder ?? DEFAULT_ALL_FOLDER) as string[];
+
+    const uniqueFolders = Array.from(new Set(allFolders)) as string[];
+
+    const rest = uniqueFolders
       .filter((n) => !ordered.includes(n))
       .sort((a, b) => a.localeCompare(b));
 
-    return [RESERVED_CDRS_BLOCK, ...ordered, ...rest];
+    const systemFolders = [RESERVED_CDRS_BLOCK, DEFAULT_ALL_FOLDER];
+
+    const orderedFiltered = ordered.filter((n) => !systemFolders.includes(n));
+    const restFiltered = rest.filter(
+      (n) => !systemFolders.includes(n) && !orderedFiltered.includes(n)
+    );
+
+    return [...systemFolders, ...orderedFiltered, ...restFiltered];
   };
 
   return {
-    // существующие
     isLoading,
     error,
     getSavedProfiles,
@@ -309,14 +286,13 @@ export function useSavedProfiles() {
     updateProfile,
     deleteProfile,
 
-    // новые (аддитивно)
     getFolders,
     createFolder,
     renameFolder,
     deleteFolder,
     reorderFolders,
     moveProfileToFolder,
-    getBlocksOrder, // если понадобится снаружи
-    setBlocksOrder, // если понадобится снаружи
+    getBlocksOrder,
+    setBlocksOrder,
   };
 }

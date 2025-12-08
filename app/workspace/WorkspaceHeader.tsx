@@ -52,60 +52,27 @@ export default function NewHeader({
 
       <div className="flex items-center gap-2">
         <button
-          id="ws-save-btn"
-          onClick={onSaveProfiling}
-          disabled={disableSaveProfiling}
           type="button"
-          className={`hidden md:flex items-center gap-1 text-xs sm:text-sm font-inter px-3 py-1 rounded-md transition hover:bg-[var(--surface)] ${
-            disableSaveProfiling ? 'opacity-50 pointer-events-none' : ''
-          }`}
-        >
-          <Upload size={14} className="text-[var(--text-primary)]" />
-          <span className="text-[var(--text-primary)]">Save</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onSaveProfiling}
-          disabled={disableSaveProfiling}
-          aria-label="Save"
-          className={`md:hidden group flex items-center justify-center rounded-full transition ${
-            disableSaveProfiling ? 'opacity-50 pointer-events-none' : ''
-          }`}
-        >
-          <span
-            className="
-              flex h-8 w-8 items-center justify-center
-              rounded-full
-              bg-[var(--background)]
-              shadow-sm
-              group-hover:bg-[var(--surface)]
-              group-hover:shadow-md
-              transition
-            "
-          >
-            <Upload className="w-4 h-4 text-[var(--text-primary)] opacity-80" />
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onLogout}
+          onClick={() => {
+            window.location.href = '/';
+          }}
           aria-label="Go home"
           className="group flex items-center justify-center rounded-full transition"
         >
           <span
             className="
-            flex h-8 w-8 items-center justify-center
-            rounded-full
-            bg-[var(--background)]
-            shadow-sm
-            group-hover:bg-[var(--surface)]
-            group-hover:shadow-md
-            transition
+           flex h-8 w-20 items-center justify-center
+           rounded-full
+           bg-[var(--background)]
+           shadow-sm
+           group-hover:bg-[var(--surface)]
+           group-hover:shadow-md
+           transition
           "
           >
-            <Home className="w-4 h-4 text-[var(--text-primary)] opacity-80" />
+            <span className="text-[var(--text-primary)] opacity-80 text-xs font-monoBrand tracking-[0.22em] uppercase">
+              H1NTED
+            </span>
           </span>
         </button>
       </div>

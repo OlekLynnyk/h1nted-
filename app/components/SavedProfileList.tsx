@@ -9,6 +9,7 @@ type SavedProfileListProps = {
   showCreateBlockButton?: boolean;
 };
 
+const SYSTEM_BLOCKS = ['Universal Archive', 'CDRs'];
 const UNGROUPED_ID = '__ungrouped__' as const;
 const MAX_CUSTOM_BLOCKS = 15;
 const MAX_BLOCK_NAME_LEN = 30;
@@ -269,6 +270,10 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
   };
 
   const handleDeleteFolder = async (folderName: string) => {
+    if (SYSTEM_BLOCKS.includes(folderName)) {
+      return;
+    }
+
     if (!userId) return;
 
     const confirmed = window.confirm(`Delete the empty block "${folderName}"?`);
@@ -477,18 +482,21 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
                     <span className="text-xs text-[var(--text-secondary)] italic">
                       This block is empty.
                     </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFolder(folderName);
-                      }}
-                      className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-sm scale-75"
-                      aria-label={`Delete block ${folderName}`}
-                      title="Delete block"
-                      type="button"
-                    >
-                      ✕
-                    </button>
+
+                    {!SYSTEM_BLOCKS.includes(folderName) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFolder(folderName);
+                        }}
+                        className="text-[var(--text-secondary)] hover:text-[var(--danger)] text-sm scale-75"
+                        aria-label={`Delete block ${folderName}`}
+                        title="Delete block"
+                        type="button"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 ) : (
                   items.map((p) => <Row key={p.id} profile={p} />)
