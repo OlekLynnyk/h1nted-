@@ -7,7 +7,6 @@ import AuthModal from '@/app/components/AuthModal';
 export default function LoginPage() {
   const router = useRouter();
 
-  // ← добавили
   useEffect(() => {
     document.title = 'H1NTED · Login';
   }, []);

@@ -23,6 +23,7 @@ import { useChatInputState } from '@/app/hooks/useChatInputState';
 import { useDragOverlay } from '@/app/hooks/useDragOverlay';
 import { useScrollObserver } from '@/app/hooks/useScrollObserver';
 import SaveProfileModal from '@/app/components/SaveProfileModal';
+import AuthModal from '@/app/components/AuthModal';
 import { useSavedProfiles } from '@/app/hooks/useSavedProfiles';
 import { FaLinkedin } from 'react-icons/fa';
 import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
@@ -71,7 +72,25 @@ const OnboardingSpotlight = dynamic(
 );
 
 export default function WorkspacePage() {
-  const { session, user, isLoading } = useAuth();
+  const { session, user, isLoading, signOut } = useAuth();
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const openAuthModal = () => {
+    setShowAuthModal(true);
+  };
+
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
+  };
+
+  const openLoginForImageUpload = () => {
+    try {
+      sessionStorage.setItem('postLoginAction', 'open-image-picker');
+    } catch {}
+    openAuthModal();
+  };
 
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
@@ -384,10 +403,6 @@ export default function WorkspacePage() {
   };
 
   useEffect(() => {
-    if (!isLoading && !session) router.push('/');
-  }, [session, isLoading, router]);
-
-  useEffect(() => {
     (async () => {
       const uid = session?.user?.id;
       if (!uid) return;
@@ -422,6 +437,22 @@ export default function WorkspacePage() {
       });
     }
   }, [historyLoaded, ready, messages, triggerFirstAssistantReply]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    let action = null;
+    try {
+      action = sessionStorage.getItem('postLoginAction');
+    } catch {}
+
+    if (action === 'open-image-picker') {
+      try {
+        sessionStorage.removeItem('postLoginAction');
+      } catch {}
+      fileInputRef.current?.click();
+    }
+  }, [session]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -467,8 +498,9 @@ export default function WorkspacePage() {
     }).catch(console.error);
   }, [messages, session?.user?.id]);
 
-  const handleLogoutConfirm = () => {
-    if (window.confirm('Are you sure you want to return to the home page?')) router.push('/');
+  const handleLogoutConfirm = async () => {
+    if (!window.confirm('Are you sure you want to sign out?')) return;
+    await signOut();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -494,6 +526,11 @@ export default function WorkspacePage() {
     const hasFiles = attachedFiles.length > 0;
 
     autoSaveEnabledRef.current = true;
+
+    if (!session) {
+      openAuthModal();
+      return;
+    }
 
     if (chatMode === 'image') {
       if (attachedFiles.length === 0) {
@@ -584,6 +621,15 @@ export default function WorkspacePage() {
     e.preventDefault();
     e.stopPropagation();
 
+    if (!session) {
+      setIsDragging(false);
+      openAuthModal();
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
     if (isCdrMode) {
       if (attachedFiles.length >= 1 || e.dataTransfer.files.length > 1) {
         alert('Only 1 photo is allowed in CDRs mode.');
@@ -634,10 +680,6 @@ export default function WorkspacePage() {
 
   if (isLoading) return <GlobalLoading />;
 
-  if (!session) {
-    return <div className="p-8 text-[var(--text-secondary)]">❌ No access</div>;
-  }
-
   return (
     <>
       <SessionBridge />
@@ -660,6 +702,9 @@ export default function WorkspacePage() {
               refreshToken={refreshToken}
               activeBox={activeSidebarBox}
               onActiveBoxChange={setActiveSidebarBox}
+              isLoggedIn={!!session}
+              onSignOut={handleLogoutConfirm}
+              onOpenAuthModal={openAuthModal}
             />
           )}
 
@@ -670,6 +715,8 @@ export default function WorkspacePage() {
             onLogout={handleLogoutConfirm}
             onSaveProfiling={handleSaveClick}
             disableSaveProfiling={isGenerating || messages.length === 0}
+            isLoggedIn={!!session}
+            onOpenAuthModal={openAuthModal}
           />
 
           {/* RIGHT VERTICAL PROMO */}
@@ -977,6 +1024,13 @@ export default function WorkspacePage() {
                         if (imageBlockedByCdrs) {
                           e.preventDefault();
                           alert('Disable CDRs attachments to use Image mode.');
+                          return;
+                        }
+
+                        if (!session) {
+                          e.preventDefault();
+                          openLoginForImageUpload();
+                          return;
                         }
                       }}
                     >
@@ -984,6 +1038,7 @@ export default function WorkspacePage() {
                       Image
                       <input
                         type="file"
+                        ref={fileInputRef}
                         className="hidden"
                         accept="image/*"
                         multiple={false}
@@ -1146,30 +1201,6 @@ export default function WorkspacePage() {
             </div>
           </div>
 
-          {!isAtBottom && (
-            <button
-              onClick={scrollToBottom}
-              className="
-              absolute
-              right-3 md:right-4
-              bottom-24 sm:bottom-28
-              w-9 h-9
-              flex items-center justify-center
-              rounded-full
-              bg-[var(--card-bg)]
-              text-[var(--text-primary)]
-              ring-1 ring-[var(--card-border)]
-              shadow-md
-              hover:bg-[var(--button-hover-bg)]
-              transition
-              focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]
-             "
-              aria-label="Scroll to latest message"
-            >
-              <ChevronDown className="w-4 h-4 translate-y-[0.5px]" />
-            </button>
-          )}
-
           {showConfirm && (
             <div className="fixed inset-0 flex items-center justify-center z-[9999] bg-black/40 backdrop-blur-sm">
               <div
@@ -1321,6 +1352,8 @@ export default function WorkspacePage() {
             defaultProfileName={`DR ${new Date().toLocaleDateString('en-GB')}`}
           />
 
+          {showAuthModal && <AuthModal onClose={closeAuthModal} />}
+
           {ready && showStep1 && (
             <OnboardingSpotlight
               targetSelector="#ws-onb-anchor"
@@ -1389,6 +1422,9 @@ export default function WorkspacePage() {
               onClose={() => setMobileSidebarOpen(false)}
               activeBox={activeSidebarBox}
               onActiveBoxChange={setActiveSidebarBox}
+              isLoggedIn={!!session}
+              onSignOut={handleLogoutConfirm}
+              onOpenAuthModal={openAuthModal}
             />
           )}
         </div>

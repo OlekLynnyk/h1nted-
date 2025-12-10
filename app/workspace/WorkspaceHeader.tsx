@@ -10,6 +10,9 @@ interface HeaderProps {
   onLogout: () => void;
   onSaveProfiling: () => void;
   disableSaveProfiling?: boolean;
+
+  isLoggedIn: boolean;
+  onOpenAuthModal: () => void;
 }
 
 export default function NewHeader({
@@ -18,6 +21,9 @@ export default function NewHeader({
   onLogout,
   onSaveProfiling,
   disableSaveProfiling,
+
+  isLoggedIn,
+  onOpenAuthModal,
 }: HeaderProps) {
   return (
     <header
@@ -54,9 +60,13 @@ export default function NewHeader({
         <button
           type="button"
           onClick={() => {
-            window.location.href = '/';
+            if (isLoggedIn) {
+              window.location.href = '/';
+            } else {
+              onOpenAuthModal();
+            }
           }}
-          aria-label="Go home"
+          aria-label={isLoggedIn ? 'Go home' : 'Sign in'}
           className="group flex items-center justify-center rounded-full transition"
         >
           <span
@@ -71,7 +81,7 @@ export default function NewHeader({
           "
           >
             <span className="text-[var(--text-primary)] opacity-80 text-xs font-monoBrand tracking-[0.22em] uppercase">
-              H1NTED
+              {isLoggedIn ? 'H1NTED' : 'Sign in'}
             </span>
           </span>
         </button>

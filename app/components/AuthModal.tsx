@@ -26,17 +26,14 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   const [info, setInfo] = useState('');
   const [redirecting, setRedirecting] = useState(false);
 
-  // --- Email verification support ---
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // NEW: mobile gating state
   const [isMobile, setIsMobile] = useState(false);
   const [mobileNoteOpen, setMobileNoteOpen] = useState(false);
 
-  // lock scroll + esc + focus
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -44,7 +41,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       typeof window !== 'undefined' &&
       window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches === true;
     setIsMobile(isTouch);
-    // Фокусируем email только на десктопе, чтобы на мобиле не открывалась клавиатура
+
     if (!isTouch) {
       setTimeout(() => emailRef.current?.focus(), 0);
     }
@@ -59,7 +56,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
     };
   }, [onClose]);
 
-  // 🔒 Блок: авто-закрытие модала, если сессия уже есть или появилась
   useEffect(() => {
     let unsub: { unsubscribe: () => void } | null = null;
 
@@ -94,7 +90,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
     return () => unsub?.unsubscribe();
   }, [supabase, onClose, router]);
 
-  // Кулдаун на повторную отправку письма (тик раз в секунду)
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const t = window.setInterval(() => {
@@ -103,7 +98,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
     return () => window.clearInterval(t);
   }, [resendCooldown]);
 
-  // Автовключение блока Resend при заходе с /login?unverified=1
   useEffect(() => {
     if (searchParams?.get('unverified') === '1') {
       setNeedsVerification(true);
@@ -111,15 +105,12 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  // Автосообщение при /login?verified=1
   useEffect(() => {
     if (searchParams?.get('verified') === '1') {
       setInfo('Email verified. You can log in now.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // клик по фону
   const onBackdrop = (e: React.MouseEvent) => {
     if (e.target === shellRef.current) onClose();
   };
@@ -143,13 +134,12 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
         setRedirecting(false);
         setError(error.message);
       }
-    }); // закрывает requestAnimationFrame
+    });
   };
 
   function isEmailNotConfirmed(err: unknown) {
     const status = (err as AuthApiError | undefined)?.status;
     const msg = (err as any)?.message?.toString()?.toLowerCase?.() ?? '';
-    // Supabase обычно даёт 400 и текст с "confirm"
     return status === 400 && msg.includes('confirm');
   }
 
@@ -192,7 +182,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       return;
     }
     if (!email || !password) {
-      // Разрешаем клик на мобильном в режиме Create ради показа поповера
       if (!isLogin && isMobile) {
         setMobileNoteOpen(true);
         return;
@@ -201,7 +190,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    // Блокируем email sign-up на мобильных: показываем мини-поповер и не выполняем signUp
     if (!isLogin && isMobile) {
       setMobileNoteOpen(true);
       return;
@@ -253,12 +241,11 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       ref={shellRef}
       onMouseDown={onBackdrop}
       data-interactive="true"
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="auth-title"
     >
-      {/* мягкий glow под карточкой */}
       <div className="pointer-events-none absolute inset-0 mx-auto max-w-md h-[360px] top-1/2 -translate-y-1/2 bg-purple-500/10 blur-3xl rounded-[48px]" />
 
       <div
@@ -281,7 +268,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Google */}
         <button
           onClick={handleGoogleLogin}
           className="mt-5 w-full inline-flex items-center justify-center gap-3
@@ -297,7 +283,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           or enter your email and password
         </div>
 
-        {/* Inputs */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -325,7 +310,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                        focus:outline-none focus:ring-2 focus:ring-purple-300/60"
           />
 
-          {/* согласие */}
           <label className="mt-1.5 flex items-start gap-3 text-xs text-white/70">
             <input
               type="checkbox"
@@ -358,7 +342,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           {error && <div className="text-red-300 text-xs">{error}</div>}
           {info && <div className="text-green-300 text-xs">{info}</div>}
 
-          {/* RESEND BLOCK */}
           {(needsVerification || (isLogin && email)) && (
             <div className="mt-3 rounded-lg bg-white/[0.05] ring-1 ring-white/10 p-3">
               <div className="text-xs text-white/80">
@@ -385,13 +368,11 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           <div className="relative">
             <button
               type="submit"
-              // Не используем disabled для mobile create, чтобы поймать клик и показать поповер
               disabled={(!email || !password) && !(isMobile && !isLogin)}
               aria-describedby={mobileNoteOpen ? 'mobile-signup-note' : undefined}
               className={
                 `mt-4 w-full rounded-full px-5 py-3 text-white backdrop-blur ring-1 focus:outline-none
                  focus-visible:ring-2 focus-visible:ring-purple-300/60 ` +
-                // 🔧 ТОЛЬКО мобильный + Create: делаем кнопку тёмной, «заблокированной» визуально
                 (!isLogin && isMobile
                   ? 'bg-white/5 ring-white/10 text-white/60 opacity-50 hover:bg-white/5 hover:ring-white/10'
                   : 'bg-purple-500/25 hover:bg-purple-500/30 ring-purple-300/30 hover:ring-purple-300/40 ' +
@@ -401,7 +382,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
               {isLogin ? 'Login' : 'Create Account'}
             </button>
 
-            {/* Мини-поповер — очень маленькое уведомление строго для mobile sign-up */}
             {mobileNoteOpen && (
               <div
                 id="mobile-signup-note"
@@ -434,7 +414,6 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                 >
                   Continue with Google
                 </button>
-                {/* треугольник-указатель */}
                 <div
                   className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-0 h-0
                                 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-black/80"
@@ -444,14 +423,12 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           </div>
         </form>
 
-        {/* нижняя панель */}
         <div className="mt-4 flex items-center justify-between text-sm">
           <button
             onClick={() => {
               const next = !isLogin;
               setIsLogin(next);
               if (next === false && isMobile) {
-                // Переключились в Create на мобильном — сразу показать уведомление
                 setMobileNoteOpen(true);
               } else {
                 setMobileNoteOpen(false);

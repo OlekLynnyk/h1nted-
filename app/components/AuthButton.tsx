@@ -37,7 +37,7 @@ export default function AuthButton() {
 
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
-      provider: 'github', // или 'google'
+      provider: 'github',
       options: {
         redirectTo: getRedirectTo(),
       },

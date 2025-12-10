@@ -29,7 +29,6 @@ export default function SessionBridge() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // 🔒 Удаляем ?code и ?state на финальном редиректе OAuth, чтобы клиент не сделал повторный PKCE-обмен
     if (typeof window !== 'undefined' && window.location.pathname === '/auth/callback') {
       const url = new URL(window.location.href);
       let changed = false;

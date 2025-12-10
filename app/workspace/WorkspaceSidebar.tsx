@@ -48,6 +48,10 @@ type DesktopSidebarProps = {
   refreshToken: number;
   activeBox: 'templates' | 'saved-messages' | 'library' | null;
   onActiveBoxChange: (box: 'templates' | 'saved-messages' | 'library' | null) => void;
+
+  isLoggedIn: boolean;
+  onSignOut: () => void;
+  onOpenAuthModal: () => void;
 };
 
 export function DesktopSidebar({
@@ -56,6 +60,9 @@ export function DesktopSidebar({
   refreshToken,
   activeBox,
   onActiveBoxChange,
+  isLoggedIn,
+  onSignOut,
+  onOpenAuthModal,
 }: DesktopSidebarProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
@@ -143,6 +150,9 @@ export function DesktopSidebar({
         used={used}
         usedMonthly={usedMonthly}
         limits={limits}
+        isLoggedIn={isLoggedIn}
+        onSignOut={onSignOut}
+        onOpenAuthModal={onOpenAuthModal}
       />
     </aside>
   );
@@ -153,9 +163,21 @@ type MobileSidebarProps = {
   onClose: () => void;
   activeBox: 'templates' | 'saved-messages' | 'library' | null;
   onActiveBoxChange: (box: 'templates' | 'saved-messages' | 'library' | null) => void;
+
+  isLoggedIn: boolean;
+  onSignOut: () => void;
+  onOpenAuthModal: () => void;
 };
 
-export function MobileSidebar({ open, onClose, activeBox, onActiveBoxChange }: MobileSidebarProps) {
+export function MobileSidebar({
+  open,
+  onClose,
+  activeBox,
+  onActiveBoxChange,
+  isLoggedIn,
+  onSignOut,
+  onOpenAuthModal,
+}: MobileSidebarProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
   const [autoFooterEnabled, setAutoFooterEnabled] = React.useState(true);
 
@@ -245,6 +267,9 @@ export function MobileSidebar({ open, onClose, activeBox, onActiveBoxChange }: M
           used={used}
           usedMonthly={usedMonthly}
           limits={limits}
+          isLoggedIn={isLoggedIn}
+          onSignOut={onSignOut}
+          onOpenAuthModal={onOpenAuthModal}
         />
       </aside>
     </>
@@ -401,6 +426,9 @@ function SidebarFooter({
   used,
   usedMonthly,
   limits,
+  isLoggedIn,
+  onSignOut,
+  onOpenAuthModal,
 }: {
   expanded: boolean;
   userMenuOpen: boolean;
@@ -409,6 +437,10 @@ function SidebarFooter({
   used: number;
   usedMonthly: number;
   limits: { dailyGenerations: number; monthlyGenerations: number };
+
+  isLoggedIn: boolean;
+  onSignOut: () => void;
+  onOpenAuthModal: () => void;
 }) {
   const { setTheme } = useTheme();
   const { user } = useAuth();
@@ -636,7 +668,28 @@ function SidebarFooter({
           </div>
 
           <div className="mt-1 pt-1 border-t border-[var(--card-border)]">
-            <SidebarButton item={signoutItem} expanded={true} />
+            <button
+              type="button"
+              className="group w-full flex items-center gap-3 rounded-[999px] px-2 py-2 text-xs
+                       hover:bg-[var(--surface)] transition-all duration-300 text-[var(--text-primary)]
+                       justify-start"
+              onClick={() => {
+                if (isLoggedIn) {
+                  onSignOut();
+                } else {
+                  onOpenAuthModal();
+                }
+              }}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--background)]">
+                <signoutItem.icon className="w-4 h-4 opacity-80" />
+              </span>
+              {expanded && (
+                <span className="font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)] text-[11px]">
+                  {isLoggedIn ? 'Sign out' : 'Sign in'}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -4,13 +4,11 @@ import Image from 'next/image';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 type Props = {
-  /** Лого/знак для правой панели (desktop) и центрального блика (mobile) */
-  logoSrc?: string; // напр.: "/images/logo-mark.png" или svg
+  logoSrc?: string;
   logoAlt?: string;
   onTryClick: () => void | boolean | Promise<boolean>;
 };
 
-/** Настройки анимации */
 const TYPE_DELAY = 55;
 const DELETE_DELAY = 38;
 const HOLD_AFTER_TYPE = 1200;
@@ -25,7 +23,6 @@ const PHRASES = [
   'weigh signals not noise',
 ] as const;
 
-/** Хук тайпврайтера: циклически печатает/стирает фразы */
 function useTypewriter(list: readonly string[]) {
   const [index, setIndex] = useState(0);
   const [output, setOutput] = useState('');
@@ -57,7 +54,6 @@ function useTypewriter(list: readonly string[]) {
       };
     }
 
-    // deleting
     if (output.length > 0) {
       schedule(() => setOutput(current.slice(0, output.length - 1)), DELETE_DELAY);
     } else {
@@ -81,21 +77,18 @@ export default function Hero({
 }: Props) {
   const typed = useTypewriter(PHRASES);
 
-  // --- локальный стейт и обработчик для кнопки Workspace ---
   const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [loadingGallery, setLoadingGallery] = useState(false);
 
-  async function handleWorkspaceClick() {
-    if (loadingWorkspace) return; // защита от повторных нажатий
-    const r = await Promise.resolve(onTryClick?.());
-    if (r === true) setLoadingWorkspace(true); // включаем лоадер, если редирект действительно пошёл
+  function handleWorkspaceClick() {
+    if (loadingWorkspace) return;
+    setLoadingWorkspace(true);
+    window.location.href = '/workspace';
   }
 
   return (
     <section className="relative z-0 w-full text-white">
-      {/* ==== DESKTOP (>= md) ==== */}
       <div className="hidden md:block relative z-0 min-h-[800px] mx-auto max-w-[1440px]">
-        {/* Левая колонка по фигме */}
         <div
           className="absolute"
           style={{
@@ -110,7 +103,6 @@ export default function Hero({
             gap: 40,
           }}
         >
-          {/* Text block — точное разбиение по строкам и цветам */}
           <div
             style={{
               width: 583,
@@ -119,14 +111,12 @@ export default function Hero({
               justifyContent: 'center',
             }}
           >
-            {/* 1-я строка — белая */}
             <span
               className="font-monoBrand small-caps"
               style={{ fontWeight: 400, fontSize: 28, lineHeight: '1.45', color: '#FFFFFF' }}
             >
               Human insight, instantly.
             </span>
-            {/* 2-я — серая */}
             <span
               className="font-monoBrand small-caps"
               style={{
@@ -138,7 +128,6 @@ export default function Hero({
             >
               Read tiny cues from outfits
             </span>
-            {/* 3-я — серая */}
             <span
               className="font-monoBrand small-caps"
               style={{
@@ -150,7 +139,6 @@ export default function Hero({
             >
               to understand people
             </span>
-            {/* 4-я — серая */}
             <span
               className="font-monoBrand small-caps"
               style={{
@@ -163,7 +151,6 @@ export default function Hero({
               with diplomatic precision —
             </span>
 
-            {/* 5-я строка: "and" (серый) + анимация (белая) + каретка + divider */}
             <div
               className="flex items-center gap-[12px] typeLine"
               style={{ width: 660, height: 46, flexWrap: 'nowrap', overflow: 'hidden' }}
@@ -190,8 +177,8 @@ export default function Hero({
               <span
                 className="ml-[2px] caret-blink"
                 style={{
-                  fontSize: 28, // как у текста
-                  lineHeight: '40px', // как у height строки
+                  fontSize: 28,
+                  lineHeight: '40px',
                   height: 40,
                   display: 'inline-block',
                   verticalAlign: 'bottom',
@@ -202,7 +189,6 @@ export default function Hero({
             </div>
           </div>
 
-          {/* Кнопки */}
           <div className="flex items-center gap-3" style={{ width: 351, height: 56 }}>
             <button
               type="button"
@@ -222,9 +208,8 @@ export default function Hero({
               style={{ width: 152 }}
               data-figma="Gallery"
               onClick={() => {
-                setLoadingGallery(true); // показать “Opening…”
+                setLoadingGallery(true);
                 setTimeout(() => {
-                  // дать UI перерисоваться и уйти
                   window.location.href = '/gallery';
                 }, 0);
               }}
@@ -234,19 +219,14 @@ export default function Hero({
           </div>
         </div>
 
-        {/* Правая бренд-панель (Component 3) */}
-        {/* Правая бренд-панель (Component 3) — FINAL VERSION */}
         <div
           className="absolute right-[120px] top-0 pointer-events-none"
           style={{ width: 500, height: 800 }}
           aria-hidden
         >
-          {/* Чёрный фон */}
           <div className="absolute inset-0 bg-black pointer-events-none" />
 
-          {/* Градиентные слои */}
           <div className="absolute inset-0">
-            {/* Задний мягкий градиент */}
             <div
               className="absolute"
               style={{
@@ -259,7 +239,6 @@ export default function Hero({
                 filter: 'blur(72px)',
               }}
             />
-            {/* Центральный фокус */}
             <div
               className="absolute"
               style={{
@@ -274,7 +253,6 @@ export default function Hero({
             />
           </div>
 
-          {/* Слой с символами (кольцо + осьминог) */}
           <div
             className="absolute inset-0 flex items-center justify-center opacity-30"
             style={{
@@ -284,11 +262,9 @@ export default function Hero({
               isolation: 'isolate',
             }}
           >
-            {/* Кольцо */}
             <div className="absolute w-[380px] h-[380px]">
               <Image src="/images/octo-ring.png" alt="Ring" fill style={{ objectFit: 'contain' }} />
             </div>
-            {/* Символ */}
             <div className="absolute w-[320px] h-[320px]">
               <Image
                 src="/images/octo-symbol.png"
@@ -301,15 +277,12 @@ export default function Hero({
         </div>
       </div>
 
-      {/* ==== MOBILE (< md) ==== */}
       <div
         className="md:hidden relative z-[1]"
         style={{ width: 375, minHeight: 600, margin: '0 auto' }}
       >
-        {/* Фон блока */}
         <div className="absolute inset-0 bg-black pointer-events-none" />
 
-        {/* Верхний блик/градиенты */}
         <div
           className="absolute pointer-events-none"
           style={{ width: 335, height: 376, left: 15, top: -13, opacity: 0.3 }}
@@ -340,7 +313,6 @@ export default function Hero({
           />
         </div>
 
-        {/* Центрированный знак */}
         {logoSrc ? (
           <div
             className="absolute inset-0 flex justify-center opacity-[0.15] pointer-events-none"
@@ -360,20 +332,15 @@ export default function Hero({
           </div>
         ) : null}
 
-        {/* Текст + кнопки (внизу, как на макете) */}
         <div className="absolute left-0 right-0 px-5 z-[10]" style={{ bottom: 0 }}>
-          {/* Разбито по строкам и цветам как в фигме */}
           <div
             className="font-monoBrand small-caps text-center"
             style={{ fontWeight: 400, fontSize: 18, lineHeight: '145%', color: '#FFFFFF' }}
           >
-            {/* 1-я строка — белая */}
             <div>Human insight, instantly.</div>
-            {/* 2-4 — серые */}
             <div style={{ color: 'rgba(255,255,255,0.5)' }}>Read tiny cues from outfits</div>
             <div style={{ color: 'rgba(255,255,255,0.5)' }}>to understand people</div>
             <div style={{ color: 'rgba(255,255,255,0.5)' }}>with diplomatic precision —</div>
-            {/* 5-я: and (серый) + typed (белый) + каретка */}
             <div
               className="flex items-center justify-center gap-[8px]"
               style={{ height: 26, lineHeight: '26px', flexWrap: 'nowrap', overflow: 'hidden' }}
@@ -424,9 +391,8 @@ export default function Hero({
               type="button"
               className="inline-flex items-center justify-center h-[50px] px-[13px] rounded-[8px] bg-white/15 text-white font-mono [font-variant:small-caps] text-[15px] leading-[1.45] w-1/2 max-w-[170px]"
               onClick={() => {
-                setLoadingGallery(true); // показать “Opening…”
+                setLoadingGallery(true);
                 setTimeout(() => {
-                  // дать UI перерисоваться и уйти
                   window.location.href = '/gallery';
                 }, 0);
               }}
@@ -437,7 +403,6 @@ export default function Hero({
         </div>
       </div>
 
-      {/* Локальные стили для каретки */}
       <style jsx>{`
         .caret-blink {
           display: inline-block;

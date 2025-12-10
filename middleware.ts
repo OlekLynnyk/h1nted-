@@ -71,7 +71,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const protectedPaths = ['/workspace', '/settings'];
+  const protectedPaths = ['/settings'];
   const isProtected = protectedPaths.some((prefix) => path.startsWith(prefix));
 
   if (session) {
