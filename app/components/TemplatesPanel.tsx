@@ -118,7 +118,6 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
   }, []);
 
   const refresh = async () => {
-    if (!userId) return;
     setLoading(true);
     setErr(null);
     try {

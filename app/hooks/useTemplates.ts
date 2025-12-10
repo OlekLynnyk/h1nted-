@@ -62,7 +62,7 @@ export function useTemplates() {
     return trimmed;
   };
 
-  const getTemplateFolders = async (userId: string): Promise<TemplateFolderName[]> => {
+  const getTemplateFolders = async (userId?: string): Promise<TemplateFolderName[]> => {
     setError(null);
 
     const sysQ = await sb
@@ -77,6 +77,7 @@ export function useTemplates() {
       return [...SYS_FOLDERS];
     }
     const sys = (sysQ.data ?? []) as TFolderRow[];
+    if (!userId) return sys.map((r) => r.name);
 
     const custQ = await sb
       .from('template_folders')
@@ -95,17 +96,28 @@ export function useTemplates() {
     return [...sys.map((r) => r.name), ...custom.map((r) => r.name)];
   };
 
-  const getTemplates = async (userId: string): Promise<TemplateItem[]> => {
+  const getTemplates = async (userId?: string): Promise<TemplateItem[]> => {
     setIsLoading(true);
     setError(null);
 
-    const res = await sb
-      .from('template_items')
-      .select('*')
-      .or(`system.eq.true,user_id.eq.${userId}`)
-      .order('system', { ascending: false })
-      .order('folder', { ascending: true })
-      .order('title', { ascending: true });
+    let res;
+
+    if (!userId) {
+      res = await sb
+        .from('template_items')
+        .select('*')
+        .eq('system', true)
+        .order('folder', { ascending: true })
+        .order('title', { ascending: true });
+    } else {
+      res = await sb
+        .from('template_items')
+        .select('*')
+        .or(`system.eq.true,user_id.eq.${userId}`)
+        .order('system', { ascending: false })
+        .order('folder', { ascending: true })
+        .order('title', { ascending: true });
+    }
 
     setIsLoading(false);
 
