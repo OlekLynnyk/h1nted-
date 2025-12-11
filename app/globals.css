@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ede9e9;
+  --background: #f0eeee;
   --foreground: rgba(23, 23, 23, 0.92);
 
   --surface: #e3e0e0;
@@ -12,7 +12,7 @@
   --accent-hover: #4f46e5;
   --danger: #ef4444;
 
-  --card-bg: #ebe9e9;
+  --card-bg: #f0eeee;
   --card-border: #d4d4d4;
 
   --button-bg: #f1f1f1;
@@ -22,7 +22,7 @@
 }
 
 .dark {
-  --background: #0B0E11;
+  --background: #0a0d10;
   --foreground: rgba(255, 255, 255, 0.92);
 
   --surface: #0F141A;
@@ -36,7 +36,7 @@
 
   --danger: #F29A8E;
 
-  --card-bg: rgba(18, 25, 36, 1);
+  --card-bg: rgb(13, 19, 27);
   --card-border: rgba(255, 255, 255, 0.14);
   --sidebar-box-bg: rgba(18, 25, 36, 1);
 
@@ -45,7 +45,7 @@
 }
 
 .gray {
-  --background: #1a1a1c;
+  --background: #121213;
   --foreground: rgba(248, 250, 252, 0.96);
 
   --surface: #19191a;
@@ -58,7 +58,7 @@
   --accent-hover: #c084fc;
   --danger: #fca5a5;
 
-  --card-bg: #181819;
+  --card-bg: #1c1c1d;
   --card-border: rgba(148, 163, 184, 0.35);
   --sidebar-box-bg: #202123;
 

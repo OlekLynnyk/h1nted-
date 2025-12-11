@@ -319,7 +319,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                          text-purple-400 focus:ring-purple-300/60"
             />
             <span className="leading-tight">
-              I agree to the{' '}
+              I agree to{' '}
               <a
                 href="/terms"
                 target="_blank"
