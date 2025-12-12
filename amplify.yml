@@ -15,7 +15,6 @@ frontend:
         - npm ci
     build:
       commands:
-        # ❗ Жёсткая проверка наличия секретов перед сборкой
         - test -n "$STRIPE_SECRET_KEY" || (echo "❌ STRIPE_SECRET_KEY missing"; exit 1)
         - test -n "$STRIPE_WEBHOOK_SECRET" || (echo "❌ STRIPE_WEBHOOK_SECRET missing"; exit 1)
 

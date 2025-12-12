@@ -5,7 +5,6 @@ export function useCookieConsent() {
     const consent = localStorage.getItem('cookieConsent');
 
     if (consent === 'accepted') {
-      // Dynamically load Google Analytics
       const script = document.createElement('script');
       script.src = 'https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX';
       script.async = true;

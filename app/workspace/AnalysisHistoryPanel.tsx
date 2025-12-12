@@ -17,6 +17,29 @@ interface AnalysisHistoryPanelProps {
   onRename?: (id: string, newTitle: string) => void;
 }
 
+const PLACEHOLDER_IMAGES = [
+  '/images/history/01.png',
+  '/images/history/02.png',
+  '/images/history/03.png',
+  '/images/history/04.png',
+  '/images/history/05.png',
+  '/images/history/06.png',
+  '/images/history/07.png',
+  '/images/history/08.png',
+  '/images/history/09.png',
+  '/images/history/10.png',
+  '/images/history/11.png',
+  '/images/history/12.png',
+  '/images/history/13.png',
+  '/images/history/14.png',
+  '/images/history/15.png',
+  '/images/history/16.png',
+  '/images/history/17.png',
+  '/images/history/18.png',
+  '/images/history/19.png',
+  '/images/history/20.png',
+];
+
 export default function AnalysisHistoryPanel({
   items,
   activeId,
@@ -24,6 +47,26 @@ export default function AnalysisHistoryPanel({
 }: AnalysisHistoryPanelProps) {
   const hasItems = items && items.length > 0;
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  const placeholderMapRef = useRef<Record<string, number>>({});
+
+  const getPlaceholderIndex = (itemId: string, prevIndex: number | null): number => {
+    const map = placeholderMapRef.current;
+    const existing = map[itemId];
+    const max = PLACEHOLDER_IMAGES.length;
+
+    if (typeof existing === 'number') {
+      if (existing !== prevIndex) return existing;
+    }
+
+    let idx = Math.floor(Math.random() * max);
+    if (idx === prevIndex) {
+      idx = (idx + 1) % max;
+    }
+
+    map[itemId] = idx;
+    return idx;
+  };
 
   const scrollBy = (delta: number) => {
     const el = listRef.current;
@@ -82,24 +125,24 @@ export default function AnalysisHistoryPanel({
             <>
               <div
                 className="
-              pointer-events-none
-              absolute inset-x-0 top-0 h-10
-              bg-gradient-to-b
-              from-[var(--background)]
-              to-transparent
-              z-20
-            "
+                  pointer-events-none
+                  absolute inset-x-0 top-0 h-10
+                  bg-gradient-to-b
+                  from-[var(--background)]
+                  to-transparent
+                  z-20
+                "
               />
 
               <div
                 className="
-              pointer-events-none
-              absolute inset-x-0 bottom-0 h-10
-              bg-gradient-to-t
-              from-[var(--background)]
-              to-transparent
-              z-20
-            "
+                  pointer-events-none
+                  absolute inset-x-0 bottom-0 h-10
+                  bg-gradient-to-t
+                  from-[var(--background)]
+                  to-transparent
+                  z-20
+                "
               />
             </>
           )}
@@ -117,14 +160,24 @@ export default function AnalysisHistoryPanel({
                 no-scrollbar
               "
             >
-              {items.map((item) => (
-                <PreviewCard
-                  key={item.id}
-                  item={item}
-                  active={item.id === activeId}
-                  onClick={() => onSelect?.(item.id)}
-                />
-              ))}
+              {(() => {
+                let prevIndex: number | null = null;
+
+                return items.map((item) => {
+                  const placeholderIndex = getPlaceholderIndex(item.id, prevIndex);
+                  prevIndex = placeholderIndex;
+
+                  return (
+                    <PreviewCard
+                      key={item.id}
+                      item={item}
+                      active={item.id === activeId}
+                      placeholderSrc={PLACEHOLDER_IMAGES[placeholderIndex]}
+                      onClick={() => onSelect?.(item.id)}
+                    />
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
@@ -165,10 +218,12 @@ function PreviewCard({
   item,
   active,
   onClick,
+  placeholderSrc,
 }: {
   item: AnalysisHistoryItem;
   active: boolean;
   onClick: () => void;
+  placeholderSrc: string;
 }) {
   const createdTs = new Date(item.createdAt).getTime();
   const twelveHoursMs = 1000 * 60 * 60 * 12;
@@ -228,10 +283,8 @@ function PreviewCard({
               alt={item.title}
               className="w-full h-full object-cover"
             />
-          ) : isExpired ? (
-            <ExpiredPlaceholderImage />
           ) : (
-            <PlaceholderImage />
+            <PlaceholderImage src={placeholderSrc} dimmed={isExpired} />
           )}
         </div>
       </div>
@@ -239,42 +292,10 @@ function PreviewCard({
   );
 }
 
-function PlaceholderImage() {
+function PlaceholderImage({ src, dimmed }: { src: string; dimmed?: boolean }) {
   return (
-    <div
-      className="
-        w-full h-full
-        flex items-center justify-center
-        bg-[var(--surface-secondary)]/20
-        text-[var(--text-secondary)]
-        font-monoBrand
-        text-[9px]
-        tracking-[0.12em]
-        uppercase
-      "
-    >
-      No image
-    </div>
-  );
-}
-
-function ExpiredPlaceholderImage() {
-  return (
-    <div
-      className="w-full h-full relative overflow-hidden"
-      style={{
-        backgroundColor: 'rgba(15,23,42,0.9)',
-        backgroundImage:
-          'radial-gradient(circle at 0% 0%, rgba(148,163,253,0.32), transparent 55%), radial-gradient(circle at 100% 100%, rgba(236,72,153,0.32), transparent 55%)',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(to bottom, rgba(15,23,42,0.2), rgba(15,23,42,0.75))',
-        }}
-      />
+    <div className="w-full h-full relative overflow-hidden">
+      <img src={src} alt="" className="w-full h-full object-cover" />
     </div>
   );
 }

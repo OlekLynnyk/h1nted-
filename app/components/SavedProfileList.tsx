@@ -45,10 +45,8 @@ function useTapToggle({
 
     cleanup();
 
-    // если выделен текст — не считаем за тап
     if (typeof window.getSelection === 'function' && window.getSelection()?.toString()) return;
 
-    // если отпускаем на интерактивном элементе (кнопки с data-interactive="true") — не триггерим onTap
     const target = e.target as HTMLElement | null;
     if (target && target.closest('[data-interactive="true"]')) return;
 
@@ -86,6 +84,97 @@ function useTapToggle({
 
   return { onPointerDown, onPointerMove, onPointerUp, onKeyDown };
 }
+
+type SectionHeaderProps = {
+  title: string;
+  id: string;
+  expanded: boolean;
+  onToggle: (id: string) => void;
+};
+
+const SectionHeader = memo(function SectionHeader({
+  title,
+  id,
+  expanded,
+  onToggle,
+}: SectionHeaderProps) {
+  const tap = useTapToggle({
+    onTap: () => onToggle(id),
+    thresh: 6,
+    cooldownMs: 180,
+  });
+
+  const panelId = `saved-sec-${id}`;
+
+  return (
+    <div
+      className="relative z-0 flex justify-between items-center px-3 py-1 cursor-pointer no-select leading-5 min-h-[24px] touch-manipulation"
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      aria-controls={panelId}
+      draggable={false}
+      onPointerDown={tap.onPointerDown}
+      onPointerUp={tap.onPointerUp}
+      onKeyDown={tap.onKeyDown}
+    >
+      <span className="text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)]">
+        {title}
+      </span>
+      <span className="text-[var(--text-secondary)] text-[8px] relative top-px pointer-events-none select-none">
+        {expanded ? '▲' : '▼'}
+      </span>
+    </div>
+  );
+});
+
+type RowProps = {
+  profile: SavedProfile;
+  onOpen: (p: SavedProfile) => void;
+  onDelete: (id: string) => void;
+};
+
+const Row = memo(function Row({ profile, onOpen, onDelete }: RowProps) {
+  const tap = useTapToggle({
+    onTap: () => onOpen(profile),
+    thresh: 6,
+    cooldownMs: 180,
+  });
+
+  return (
+    <div
+      data-row
+      role="button"
+      tabIndex={0}
+      aria-label={profile.profile_name}
+      className="flex justify-between items-center px-3 py-1 cursor-pointer no-select leading-5 min-h-[24px] touch-manipulation"
+      draggable={false}
+      onPointerDown={tap.onPointerDown}
+      onPointerUp={tap.onPointerUp}
+      onKeyDown={tap.onKeyDown}
+    >
+      <span className="file-title no-select select-none text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-primary)]">
+        {profile.profile_name}
+      </span>
+
+      <button
+        type="button"
+        data-interactive="true"
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(profile.id);
+        }}
+        className="flex items-center justify-center w-6 h-6 rounded-full text-[var(--text-secondary)] hover:text-[var(--danger)] text-base"
+        aria-label="Delete saved profile"
+        title="Delete"
+      >
+        ✕
+      </button>
+    </div>
+  );
+});
 
 export default function SavedProfileList({ showCreateBlockButton = false }: SavedProfileListProps) {
   const { session } = useAuth();
@@ -303,91 +392,6 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
 
   const toggleExpanded = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
-  const SectionHeader = memo(({ title, id }: { title: string; id: string }) => {
-    const tap = useTapToggle({
-      onTap: () => toggleExpanded(id),
-      thresh: 6,
-      cooldownMs: 180,
-    });
-
-    const panelId = `saved-sec-${id}`;
-
-    return (
-      <div
-        className="relative z-0 flex justify-between items-center px-3 py-1 cursor-pointer no-select leading-5 min-h-[24px]"
-        role="button"
-        tabIndex={0}
-        aria-expanded={!!expanded[id]}
-        aria-controls={panelId}
-        draggable={false}
-        onPointerDown={tap.onPointerDown}
-        onPointerUp={tap.onPointerUp}
-        onKeyDown={tap.onKeyDown}
-      >
-        <span className="text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-secondary)]">
-          {title}
-        </span>
-        <span className="text-[var(--text-secondary)] text-[8px] relative top-px pointer-events-none select-none">
-          {expanded[id] ? '▲' : '▼'}
-        </span>
-      </div>
-    );
-  });
-
-  const Row = memo(({ profile }: { profile: SavedProfile }) => {
-    const tap = useTapToggle({
-      onTap: () => {
-        setSelectedProfile(profile);
-      },
-      thresh: 6,
-      cooldownMs: 180,
-    });
-
-    return (
-      <div
-        data-row
-        role="button"
-        tabIndex={0}
-        aria-label={profile.profile_name}
-        className="flex justify-between items-center px-3 py-1 cursor-pointer no-select leading-5 min-h-[24px]"
-        draggable={false}
-        onPointerDown={tap.onPointerDown}
-        onPointerUp={tap.onPointerUp}
-        onKeyDown={tap.onKeyDown}
-      >
-        <span
-          className="file-title no-select select-none text-[11px] font-monoBrand tracking-[0.14em] uppercase text-[var(--text-primary)]"
-          draggable={false}
-        >
-          {profile.profile_name}
-        </span>
-
-        <button
-          type="button"
-          data-interactive="true"
-          onPointerDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDelete(profile.id);
-          }}
-          className="
-            flex items-center justify-center
-            w-6 h-6
-            rounded-full
-            text-[var(--text-secondary)]
-            hover:text-[var(--danger)]
-            text-base
-          "
-          aria-label="Delete saved profile"
-          title="Delete"
-        >
-          ✕
-        </button>
-      </div>
-    );
-  });
-
   if (loading) {
     return (
       <p className="font-monoBrand text-xs tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-80">
@@ -487,7 +491,12 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
         const items = groupedByFolder.get(folderName) || [];
         return (
           <div key={`folder-${folderName}`}>
-            <SectionHeader title={folderName} id={folderName} />
+            <SectionHeader
+              title={folderName}
+              id={folderName}
+              expanded={!!expanded[folderName]}
+              onToggle={toggleExpanded}
+            />
             {expanded[folderName] && (
               <div id={`saved-sec-${folderName}`}>
                 {items.length === 0 ? (
@@ -522,7 +531,14 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
                     )}
                   </div>
                 ) : (
-                  items.map((p) => <Row key={p.id} profile={p} />)
+                  items.map((p) => (
+                    <Row
+                      key={p.id}
+                      profile={p}
+                      onOpen={setSelectedProfile}
+                      onDelete={handleDelete}
+                    />
+                  ))
                 )}
               </div>
             )}
@@ -540,7 +556,9 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
             No saved reports yet.
           </div>
         ) : (
-          ungrouped.map((p) => <Row key={p.id} profile={p} />)
+          ungrouped.map((p) => (
+            <Row key={p.id} profile={p} onOpen={setSelectedProfile} onDelete={handleDelete} />
+          ))
         )}
       </div>
 

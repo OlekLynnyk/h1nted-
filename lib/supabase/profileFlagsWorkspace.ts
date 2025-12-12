@@ -9,7 +9,7 @@ export type WSFlags = {
   step2: boolean;
   step3: boolean;
   step4: boolean;
-  firstImageDrag: boolean; // step5
+  firstImageDrag: boolean;
   step6: boolean;
 };
 
@@ -89,7 +89,5 @@ export async function setOnboardingWSFlags(
       const { error } = await client.from('profiles').update(payload).eq('id', userId);
       if (error) throw error;
     }
-  } catch {
-    // offline — останется в LS
-  }
+  } catch {}
 }

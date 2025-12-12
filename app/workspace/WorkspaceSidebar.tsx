@@ -20,6 +20,8 @@ import { useAuth } from '@/app/context/AuthProvider';
 import TemplatesPanel from '@/app/components/TemplatesPanel';
 import SavedProfileList from '@/app/components/SavedProfileList';
 import { useTheme } from 'next-themes';
+import { BottomPlanBanner } from './BottomPlanBanner';
+import { PACKAGE_TO_PRICE } from '@/types/plan';
 
 type NavItem = {
   id: string;
@@ -153,6 +155,7 @@ export function DesktopSidebar({
         isLoggedIn={isLoggedIn}
         onSignOut={onSignOut}
         onOpenAuthModal={onOpenAuthModal}
+        activeBox={activeBox}
       />
     </aside>
   );
@@ -270,6 +273,7 @@ export function MobileSidebar({
           isLoggedIn={isLoggedIn}
           onSignOut={onSignOut}
           onOpenAuthModal={onOpenAuthModal}
+          activeBox={activeBox}
         />
       </aside>
     </>
@@ -429,6 +433,7 @@ function SidebarFooter({
   isLoggedIn,
   onSignOut,
   onOpenAuthModal,
+  activeBox,
 }: {
   expanded: boolean;
   userMenuOpen: boolean;
@@ -441,7 +446,11 @@ function SidebarFooter({
   isLoggedIn: boolean;
   onSignOut: () => void;
   onOpenAuthModal: () => void;
+  activeBox: 'templates' | 'saved-messages' | 'library' | null;
 }) {
+  const [bannerDismissed, setBannerDismissed] = React.useState(false);
+  const shouldShowBanner =
+    expanded && !userMenuOpen && !bannerDismissed && activeBox === null && plan === 'Freemium';
   const { setTheme } = useTheme();
   const { user } = useAuth();
   const userName = (user as any)?.user_metadata?.full_name || (user as any)?.email || 'User';
@@ -491,10 +500,7 @@ function SidebarFooter({
   };
 
   return (
-    <div
-      className="relative mt-auto border-t border-[var(--card-border)] px-2 py-3"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="relative mt-auto px-0 py-3" onClick={(e) => e.stopPropagation()}>
       <div
         className={`absolute left-0 right-0 bottom-full px-2 pb-2 z-10
                     transition-all duration-300 ease-out
@@ -693,6 +699,43 @@ function SidebarFooter({
           </div>
         </div>
       </div>
+
+      {shouldShowBanner && (
+        <div className="mb-3 px-2">
+          <BottomPlanBanner
+            onClose={() => setBannerDismissed(true)}
+            onUpgrade={async () => {
+              if (!isLoggedIn) {
+                try {
+                  sessionStorage.setItem('loginRedirectTo', window.location.pathname);
+                } catch {}
+                onOpenAuthModal();
+                return;
+              }
+
+              try {
+                const res = await fetch('/api/stripe/create-checkout-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ priceId: PACKAGE_TO_PRICE.Premium }),
+                });
+
+                if (!res.ok) throw new Error('Stripe checkout failed');
+
+                const { url } = await res.json();
+                if (!url) throw new Error('Missing Stripe redirect URL');
+
+                window.location.href = url;
+              } catch (err) {
+                console.error('❌ Stripe checkout error:', err);
+                alert('Payment redirect failed. Please try again later.');
+              }
+            }}
+          />
+        </div>
+      )}
+
+      <div className="border-t border-[var(--card-border)] mb-2" />
 
       <button
         type="button"

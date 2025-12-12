@@ -4,17 +4,16 @@ export function useChatInputState() {
   const [inputValue, setInputValue] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [fileErrors, setFileErrors] = useState<string[]>([]);
-  const [fileStatus, setFileStatus] = useState<string>(''); // UK English status for UI
+  const [fileStatus, setFileStatus] = useState<string>('');
 
-  // ENV (client)
   const MAX_FILES = Number(process.env.NEXT_PUBLIC_IMG_MAX_COUNT ?? '3');
   const MAX_INLINE_MB = Number(process.env.NEXT_PUBLIC_IMG_MAX_INLINE_MB ?? '4');
   const MAX_BYTES = MAX_INLINE_MB * 1024 * 1024;
-  const MAX_WIDTH = Number(process.env.NEXT_PUBLIC_IMG_MAX_WIDTH_BIG ?? '2000'); // starting width cap
+  const MAX_WIDTH = Number(process.env.NEXT_PUBLIC_IMG_MAX_WIDTH_BIG ?? '2000');
   const JPEG_Q_BASE = Number(process.env.NEXT_PUBLIC_IMG_JPEG_QUALITY ?? '0.82');
-  const MP_CAP = 12 * 1_000_000; // ≤ 12 MP for stability on mobiles
+  const MP_CAP = 12 * 1_000_000;
 
-  const ALLOWED_TYPES = ['image/']; // images only
+  const ALLOWED_TYPES = ['image/'];
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -42,7 +41,6 @@ export function useChatInputState() {
       }
 
       try {
-        // visible, concise statuses (UK English) under the input
         setFileStatus('Optimising image before upload…');
         const slowTimer = setTimeout(() => {
           setFileStatus('Still optimising — almost there…');
@@ -104,30 +102,21 @@ export function useChatInputState() {
     error: fileErrors[0] || '',
     resetInput,
     setFileErrorMessage,
-    fileStatus, // show this string under the input
+    fileStatus,
   };
 }
-
-/* =========================
-   Optimisation pipeline
-   ========================= */
 
 type OptimiseOpts = {
   maxBytes: number;
   maxWidth: number;
-  mpCap: number; // maximum pixels (e.g., 12 MP)
-  baseQuality: number; // starting JPEG quality
+  mpCap: number;
+  baseQuality: number;
   setStatus?: (s: string) => void;
 };
 
-/**
- * Converts any incoming image (incl. HEIC) to correctly oriented JPEG
- * and iteratively shrinks width/quality until <= maxBytes.
- */
 async function optimiseImageToInlineLimit(file: File, opts: OptimiseOpts): Promise<File> {
   const { maxBytes, maxWidth, baseQuality, mpCap } = opts;
 
-  // HEIC → PNG first, then we will encode to JPEG
   let working: Blob = file;
   if (file.type === 'image/heic' || file.name.toLowerCase().endsWith('.heic')) {
     const heic2any = (await import('heic2any')).default;
@@ -135,18 +124,15 @@ async function optimiseImageToInlineLimit(file: File, opts: OptimiseOpts): Promi
     working = Array.isArray(res) ? res[0] : (res as Blob);
   }
 
-  // Draw with EXIF-aware orientation and megapixel cap
   let canvas = await drawToCanvasWithOrientation(working, maxWidth, mpCap);
   let quality = clamp(baseQuality, 0.7, 0.95);
 
-  // Quick attempt: base quality at target width
   let dataUrl = canvas.toDataURL('image/jpeg', quality);
   let approxBytes = approxBytesFromDataUrl(dataUrl);
   if (approxBytes <= maxBytes) {
     return dataUrlToFile(dataUrl, renameToJpeg(file.name || 'image'));
   }
 
-  // Iterative tightening: first width ↓ (from original blob), then quality ↓
   let width = canvas.width;
   const minWidth = 640;
   const minQuality = 0.7;
@@ -157,7 +143,6 @@ async function optimiseImageToInlineLimit(file: File, opts: OptimiseOpts): Promi
   while (approxBytes > maxBytes && (width > minWidth || quality > minQuality)) {
     if (width > minWidth) {
       width = Math.max(minWidth, Math.round(width * stepW));
-      // Re-draw from original working blob to avoid compounding losses
       canvas = await drawToCanvasWithOrientation(working, width, mpCap);
     } else {
       quality = Math.max(minQuality, +(quality - stepQ).toFixed(2));
@@ -165,25 +150,18 @@ async function optimiseImageToInlineLimit(file: File, opts: OptimiseOpts): Promi
     dataUrl = canvas.toDataURL('image/jpeg', quality);
     approxBytes = approxBytesFromDataUrl(dataUrl);
 
-    // Safety: avoid long loops on weak mobiles
     if (Date.now() - started > 5000) break;
   }
 
   return dataUrlToFile(dataUrl, renameToJpeg(file.name || 'image'));
 }
 
-/* =========================
-   Canvas + EXIF helpers
-   ========================= */
-
 async function drawToCanvasWithOrientation(
   blob: Blob,
   maxWidth: number,
   mpCap: number
 ): Promise<HTMLCanvasElement> {
-  // Fast path: let browser honour EXIF Orientation
   try {
-    // @ts-ignore: supported in modern browsers
     const bmp: ImageBitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
     const { w, h } = fitWithCap(bmp.width, bmp.height, maxWidth, mpCap);
     const c = document.createElement('canvas');
@@ -192,11 +170,8 @@ async function drawToCanvasWithOrientation(
     c.getContext('2d')!.drawImage(bmp, 0, 0, w, h);
     bmp.close?.();
     return c;
-  } catch {
-    // Fallback below
-  }
+  } catch {}
 
-  // Fallback: <img> + minimal EXIF-Orientation for JPEGs
   const url = URL.createObjectURL(blob);
   try {
     const [img, orientation] = await Promise.all([loadImage(url), readJpegOrientation(blob)]);
@@ -228,7 +203,6 @@ function fitWithCap(w: number, h: number, maxW: number, mpCap: number) {
   let W = Math.max(1, Math.round(w * ratioW));
   let H = Math.max(1, Math.round(h * ratioW));
 
-  // megapixel cap
   const mp = W * H;
   if (mp > mpCap) {
     const r = Math.sqrt(mpCap / mp);
@@ -261,7 +235,6 @@ async function readJpegOrientation(blob: Blob): Promise<number | null> {
       off += 2;
 
       if (marker === 0xffe1 && size >= 10) {
-        // "Exif\0\0"
         if (dv.getUint32(off) === 0x45786966 && dv.getUint16(off + 4) === 0) {
           const tiff = off + 6;
           const little = dv.getUint16(tiff) === 0x4949;
@@ -284,9 +257,7 @@ async function readJpegOrientation(blob: Blob): Promise<number | null> {
         off += size - 2;
       }
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
   return null;
 }
 
@@ -331,12 +302,7 @@ function applyCanvasTransform(
   }
 }
 
-/* =========================
-   Small utilities
-   ========================= */
-
 function approxBytesFromDataUrlPayloadLen(len: number) {
-  // base64 is ~4/3 of bytes => bytes ≈ len * 0.75
   return Math.floor(len * 0.75);
 }
 function approxBytesFromDataUrl(u: string) {
@@ -357,10 +323,6 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-/**
- * Legacy helper (kept for compatibility).
- * Basic resize without EXIF; prefer the new pipeline above.
- */
 export async function resizeImage(
   blob: Blob,
   maxWidth: number,

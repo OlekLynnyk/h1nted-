@@ -8,9 +8,9 @@ export function detectUserLanguage(userPrompt: string | null, fallback: string =
 
   if (/^(https?:\/\/|www\.)/i.test(text)) return fallback;
 
-  if (/\p{Script=Hiragana}|\p{Script=Katakana}/u.test(text)) return 'ja'; // японская кана
-  if (/\p{Script=Hangul}/u.test(text)) return 'ko'; // корейский
-  if (/\p{Script=Han}/u.test(text)) return 'zh'; // китайский (хань)
+  if (/\p{Script=Hiragana}|\p{Script=Katakana}/u.test(text)) return 'ja';
+  if (/\p{Script=Hangul}/u.test(text)) return 'ko';
+  if (/\p{Script=Han}/u.test(text)) return 'zh';
   if (/\p{Script=Arabic}/u.test(text)) return 'ar';
   if (/\p{Script=Hebrew}/u.test(text)) return 'he';
   if (/\p{Script=Greek}/u.test(text)) return 'el';
@@ -23,28 +23,28 @@ export function detectUserLanguage(userPrompt: string | null, fallback: string =
     return /[іїєґ]/i.test(text) ? 'uk' : 'ru';
   }
 
-  if (/[őű]/i.test(text)) return 'hu'; // Hungarian
-  if (/[çğıİöşü]/i.test(text)) return 'tr'; // Turkish
+  if (/[őű]/i.test(text)) return 'hu';
+  if (/[çğıİöşü]/i.test(text)) return 'tr';
   if (
     /[ăâêôơưđ]/i.test(text) ||
     /[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựíìỉĩịýỳỷỹỵđ]/i.test(text)
   ) {
     return 'vi';
   }
-  if (/[ñáéíóúü]/i.test(text)) return 'es'; // Spanish
-  if (/[ãõáâàéêíóôúç]/i.test(text)) return 'pt'; // Portuguese (добавлен à)
-  if (/[éèêëàâîïôöùûüç]/i.test(text)) return 'fr'; // French
-  if (/[äöüß]/i.test(text)) return 'de'; // German
-  if (/[àèéìòù]/i.test(text)) return 'it'; // Italian
-  if (/[ąćęńóśźżł]/i.test(text)) return 'pl'; // Polish
-  if (/[ěščřžýáíéůú]/i.test(text)) return 'cs'; // Czech
-  if (/[ľščťžýáíéôŕ]/i.test(text)) return 'sk'; // Slovak
-  if (/[șţțşâîă]/i.test(text)) return 'ro'; // Romanian
-  if (/[åäö]/i.test(text)) return 'sv'; // Swedish
-  if (/[åøæ]/i.test(text)) return 'no'; // Norwegian
-  if (/[äöå]/i.test(text)) return 'fi'; // Finnish
-  if (/[æøå]/i.test(text)) return 'da'; // Danish
-  if (/[éëïöü]/i.test(text)) return 'nl'; // Dutch
+  if (/[ñáéíóúü]/i.test(text)) return 'es';
+  if (/[ãõáâàéêíóôúç]/i.test(text)) return 'pt';
+  if (/[éèêëàâîïôöùûüç]/i.test(text)) return 'fr';
+  if (/[äöüß]/i.test(text)) return 'de';
+  if (/[àèéìòù]/i.test(text)) return 'it';
+  if (/[ąćęńóśźżł]/i.test(text)) return 'pl';
+  if (/[ěščřžýáíéůú]/i.test(text)) return 'cs';
+  if (/[ľščťžýáíéôŕ]/i.test(text)) return 'sk';
+  if (/[șţțşâîă]/i.test(text)) return 'ro';
+  if (/[åäö]/i.test(text)) return 'sv';
+  if (/[åøæ]/i.test(text)) return 'no';
+  if (/[äöå]/i.test(text)) return 'fi';
+  if (/[æøå]/i.test(text)) return 'da';
+  if (/[éëïöü]/i.test(text)) return 'nl';
 
   if (/[a-z]/i.test(text)) return 'en';
 

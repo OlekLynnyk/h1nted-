@@ -2641,7 +2641,6 @@ Core Statement:
   },
 ];
 
-// ---------- утилиты ----------
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -2651,7 +2650,6 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** Предзагрузка с ограничением конкуренции и ретраями — БЕЗ возврата промиса из useEffect */
 function useImagesPreload(urls: string[], opts: { concurrency?: number; retries?: number } = {}) {
   const { concurrency = 6, retries = 2 } = opts;
   const [ready, setReady] = useState(false);
@@ -2674,7 +2672,7 @@ function useImagesPreload(urls: string[], opts: { concurrency?: number; retries?
               loadOne(src, attempt + 1).then(resolve);
             }, backoff);
           } else {
-            resolve(); // не блокируем весь процесс из-за одного файла
+            resolve();
           }
         };
         img.src = src;
@@ -2693,16 +2691,13 @@ function useImagesPreload(urls: string[], opts: { concurrency?: number; retries?
       if (done === urls.length) {
         setReady(true);
       } else if (queue.length) {
-        // запускаем следующий
         runNext();
       }
     }
 
-    // стартуем заданное число «воркеров»
     const starters = Math.min(concurrency, queue.length);
     for (let i = 0; i < starters; i++) runNext();
 
-    // ВОЗВРАЩАЕМ ТОЛЬКО CLEANUP
     return () => {
       alive = false;
     };
@@ -2711,7 +2706,6 @@ function useImagesPreload(urls: string[], opts: { concurrency?: number; retries?
   return ready;
 }
 
-// ---------- аспекты карточек ----------
 type Aspect = '1/1' | '4/3' | '3/4' | '16/9';
 const ASPECTS_POOL: Aspect[] = ['4/3', '4/3', '16/9', '1/1', '3/4'];
 
@@ -2728,11 +2722,7 @@ function randomAspect(): Aspect {
   return ASPECTS_POOL[u8[0] % ASPECTS_POOL.length];
 }
 
-// =============================
-// СТРАНИЦА
-// =============================
 export default function Page() {
-  // Пул >=50
   const duplicated: ImageItem[] = useMemo(() => {
     const need = 50;
     const out: ImageItem[] = [];
@@ -2779,12 +2769,11 @@ export default function Page() {
       suppressTapRef.current = true;
       setTimeout(() => {
         suppressTapRef.current = false;
-      }, 550); // окно больше, чтобы синтетический click не пробился
+      }, 550);
     }
     closeSidebar();
   }, [closeSidebar]);
 
-  // Esc → закрыть
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeSidebar();
@@ -2797,41 +2786,34 @@ export default function Page() {
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
 
     if (isDesktop) {
-      // Десктоп НЕ трогаем
       openSidebar(id);
       setElevatedId(null);
       return;
     }
 
-    // если сайдбар ОТКРЫТ — закрываем и выходим (ничего не открываем этим же тапом)
     if (sidebarId) {
       closeSidebarSafe();
       return;
     }
 
-    // если только что закрывали — глушим «пролетевший» клик
     if (suppressTapRef.current) {
       return;
     }
 
-    // сайдбар закрыт — открываем карточку
     openSidebar(id);
     setElevatedId(null);
   };
 
-  // Клавиатура
   const onCardKey = (e: React.KeyboardEvent, id: string) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
 
       if (isDesktop) {
-        // Desktop: открыть сразу
         openSidebar(id);
         setElevatedId(null);
         return;
       }
-      // Mobile: оставить текущую логику через onCardClick
       onCardClick(id);
     }
 
@@ -2843,13 +2825,11 @@ export default function Page() {
 
   if (!ready) return <GlobalLoading />;
 
-  // Сайдбар всегда 1/3
   const sidebarWidthClass = 'lg:w-[33.33vw]';
   const gridShiftClass = sidebarId ? 'lg:ml-[33.33vw]' : 'ml-0';
 
   return (
     <div className="relative">
-      {/* Header: слева ↔ справа при открытом сайдбаре */}
       <header className="sticky top-0 z-30 bg-[var(--background)]/70 backdrop-blur supports-[backdrop-filter]:bg-[var(--background)]/60">
         <div
           className={[
@@ -2866,14 +2846,12 @@ export default function Page() {
         </div>
       </header>
 
-      {/* SIDEBAR */}
       <Sidebar
         item={images.find((i) => i.id === sidebarId) || null}
         onClose={closeSidebarSafe}
         widthClass={sidebarWidthClass}
       />
 
-      {/* MASONRY (без пустот) */}
       <div className={['transition-[margin] duration-300', gridShiftClass].join(' ')}>
         <div
           className={[
@@ -2901,9 +2879,6 @@ export default function Page() {
   );
 }
 
-// =============================
-// ПЛИТКА с устойчивой загрузкой
-// =============================
 function MosaicTile({
   item,
   elevated,
@@ -2932,7 +2907,6 @@ function MosaicTile({
   const handleError = () => {
     if (attempts.current < 2) {
       attempts.current += 1;
-      // небольшой бэкофф и принудительный ре-маунт <img>
       setTimeout(() => setReloadKey((k) => k + 1), 200 * attempts.current);
     } else {
       setStatus('error');
@@ -2954,7 +2928,6 @@ function MosaicTile({
       ].join(' ')}
     >
       <div className={['relative', aspectClass].join(' ')}>
-        {/* Скелетон вместо «чёрной пустоты» */}
         <div
           className={[
             'absolute inset-0',
@@ -2987,15 +2960,12 @@ function MosaicTile({
           </div>
         )}
 
-        {/* Показываем UI только когда картинка реально загрузилась */}
         {status === 'ok' && (
           <>
-            {/* Hover-маска */}
             <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/45" />
             </div>
 
-            {/* Info puck — Pininfarina */}
             <button
               aria-label="Подробнее"
               onClick={(e) => {
@@ -3015,7 +2985,6 @@ function MosaicTile({
               <InfoIcon />
             </button>
 
-            {/* Caption */}
             <div className="absolute inset-x-0 bottom-0 px-3 pb-2">
               <p className="truncate text-[13px] font-medium text-white font-monoBrand tracking-tight">
                 {item.title}
@@ -3028,9 +2997,6 @@ function MosaicTile({
   );
 }
 
-// =============================
-// САЙДБАР (1/3 ширины, без переключателя)
-// =============================
 function Sidebar({
   item,
   onClose,
@@ -3047,10 +3013,9 @@ function Sidebar({
     <>
       <div
         onPointerDown={(e) => {
-          // только мобила; десктоп НЕ трогаем
           if (typeof window !== 'undefined' && window.innerWidth >= 1024) return;
-          e.stopPropagation(); // не даём событию пройти в карточки
-          onClose(); // закрываем сайдбар (через closeSidebarSafe)
+          e.stopPropagation();
+          onClose();
         }}
         className={[
           'fixed inset-0 z-40 bg-black/30 lg:hidden',
@@ -3063,11 +3028,11 @@ function Sidebar({
         ref={panelRef}
         className={[
           'fixed left-0 top-0 bottom-0 z-50 w-[85vw] max-w-[520px]',
-          widthClass, // lg:w-[33.33vw]
+          widthClass,
           'bg-neutral-950 text-neutral-100 border-r border-white/10',
           'px-6 py-6',
-          'overflow-y-auto overscroll-contain', // ✅ добавлено
-          'scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent', // ✅ стилизованный скролл (Tailwind)
+          'overflow-y-auto overscroll-contain',
+          'scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent',
           'transition-transform duration-300 will-change-transform',
           open ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}

@@ -24,7 +24,6 @@ export function useOnboardingWorkspace() {
   const device = useMemo(detectDevice, []);
   const [ready, setReady] = useState(false);
 
-  // visibility state
   const [v, setV] = useState({
     step1: false,
     step2: false,
@@ -43,7 +42,6 @@ export function useOnboardingWorkspace() {
     step6: false,
   });
 
-  // 👉 если мобильный – просто сразу считаем онбординг "готовым" и не грузим ничего
   useEffect(() => {
     (async () => {
       if (!session || !user) {
@@ -52,7 +50,6 @@ export function useOnboardingWorkspace() {
       }
 
       if (device === 'mobile') {
-        // мобильный workspace: онбординг отключён
         setReady(true);
         return;
       }
@@ -74,10 +71,8 @@ export function useOnboardingWorkspace() {
           if (db[k]) localStorage.setItem(lsKey(user.id, device, k), 'true');
         });
       } catch {
-        // offline — используем LS
       } finally {
         flagsRef.current = f;
-        // последовательность первого визита
         if (!f.step1) {
           setV((s) => ({ ...s, step1: true }));
           await log('onboarding_workspace_step1_shown');
@@ -88,11 +83,10 @@ export function useOnboardingWorkspace() {
         setReady(true);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, user, supabase, device]);
 
   async function persist(partial: Partial<WSFlags>) {
-    if (!session || !user || device === 'mobile') return; // 🚫 не пишем флаги для мобильного
+    if (!session || !user || device === 'mobile') return;
     Object.entries(partial).forEach(([k, v]) => {
       if (v) localStorage.setItem(lsKey(user.id, device, k as keyof WSFlags), 'true');
     });
@@ -101,11 +95,10 @@ export function useOnboardingWorkspace() {
   }
 
   async function log(name: string, extra: Record<string, any> = {}) {
-    if (!session || !user || device === 'mobile') return; // 🚫 не логируем шаги онбординга на мобиле
+    if (!session || !user || device === 'mobile') return;
     await logUserAction(supabase, user.id, name, { device, path: '/workspace', ...extra });
   }
 
-  // PUBLIC API: confirmations
   const acceptStep1 = async () => {
     if (device === 'mobile') return;
     await persist({ step1: true });
@@ -178,7 +171,6 @@ export function useOnboardingWorkspace() {
     await log('onboarding_workspace_cdrs_accepted');
   };
 
-  // TRIGGERS (внешние события)
   const triggerFirstAssistantReply = async () => {
     if (device === 'mobile') return;
     if (!flagsRef.current.step3 && !v.step3) {
@@ -211,14 +203,14 @@ export function useOnboardingWorkspace() {
   return {
     device,
     ready,
-    // visibility
+
     showStep1: device === 'mobile' ? false : v.step1,
     showStep2: device === 'mobile' ? false : v.step2,
     showStep3: device === 'mobile' ? false : v.step3,
     showStep4: device === 'mobile' ? false : v.step4,
     showFirstImageDrag: device === 'mobile' ? false : v.firstImageDrag,
     showStep6: device === 'mobile' ? false : v.step6,
-    // accepts/dismiss
+
     acceptStep1,
     dismissStep1,
     acceptStep2,
@@ -234,7 +226,7 @@ export function useOnboardingWorkspace() {
       if (device === 'mobile') return;
       setV((s) => ({ ...s, step6: false }));
     },
-    // triggers
+
     triggerFirstAssistantReply,
     triggerSaveModalOpened,
     triggerFirstImage,

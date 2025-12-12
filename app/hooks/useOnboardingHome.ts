@@ -17,7 +17,6 @@ function detectDevice(): Device {
   return isCoarse || isMobileUA ? 'mobile' : 'desktop';
 }
 
-// персонализированный ключ в localStorage
 const makeLSKey = (userId: string, device: Device) => `onb.home.${device}.seen:${userId}`;
 
 export function useOnboardingHome() {
@@ -34,7 +33,6 @@ export function useOnboardingHome() {
         return;
       }
 
-      // 1) Быстрый кэш (персонально для юзера)
       const key = makeLSKey(user.id, device);
       if (localStorage.getItem(key) === 'true') {
         setShouldShow(false);
@@ -42,7 +40,6 @@ export function useOnboardingHome() {
         return;
       }
 
-      // 2) Источник истины — профиль
       try {
         const flags = await getOnboardingFlags(supabase, user.id);
         const seen = device === 'mobile' ? flags.mobileSeen : flags.desktopSeen;
@@ -52,13 +49,12 @@ export function useOnboardingHome() {
           setShouldShow(false);
         } else {
           setShouldShow(true);
-          // логируем показ один раз, пока не отметили
+
           try {
             await logUserAction(supabase, user.id, 'onboarding_home_shown', { device });
           } catch {}
         }
       } catch {
-        // fail-safe: не ломаем страницу
         setShouldShow(false);
       } finally {
         setReady(true);
@@ -81,7 +77,6 @@ export function useOnboardingHome() {
         device === 'mobile' ? { mobileSeen: true } : { desktopSeen: true }
       );
     } catch {
-      // в худшем случае останется отметка в localStorage
     } finally {
       syncing.current = false;
     }

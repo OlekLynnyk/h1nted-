@@ -69,7 +69,7 @@ export function useUserPlan(refreshToken?: number) {
   return {
     plan,
     used: usedDaily,
-    usedMonthly, // 🔧 Добавлено
+    usedMonthly,
     limits: {
       dailyGenerations: dailyLimit,
       monthlyGenerations: monthlyLimit,

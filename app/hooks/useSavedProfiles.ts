@@ -12,6 +12,7 @@ export interface SavedProfile {
   chat_json: {
     ai_response: string;
     user_comments: string;
+    preview_image?: string | null;
   };
   folder?: string | null;
 }
@@ -23,6 +24,7 @@ export interface SavedProfileInput {
   chat_json: {
     ai_response: string;
     user_comments: string;
+    preview_image?: string | null;
   };
   folder?: string | null;
 }

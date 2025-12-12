@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
 const supabase = createPagesBrowserClient();
 
-// 1. Тип профиля — укажи все поля, которые у тебя есть в таблице Supabase
 export type Profile = {
   id: string;
   created_at: string;

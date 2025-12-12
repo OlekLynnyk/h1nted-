@@ -18,7 +18,6 @@ export function useStripeCheckout() {
       const userId = data.session?.user.id;
       const token = data.session?.access_token;
 
-      // 1) PREVIEW (Paid→Paid): сервер вернёт requiresConfirmation=true
       let res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         body: JSON.stringify({ priceId }),
@@ -35,7 +34,6 @@ export function useStripeCheckout() {
       } catch {}
 
       if (!res.ok) {
-        // На этом шаге не должно быть 402, но подстрахуемся
         if (json?.portalUrl) {
           window.location.href = json.portalUrl;
           return;
@@ -48,7 +46,6 @@ export function useStripeCheckout() {
         return;
       }
 
-      // 2) Если это апгрейд — показываем сумму и спрашиваем подтверждение
       if (json?.requiresConfirmation) {
         const total = json.preview?.total ?? 0;
         const currency = (json.preview?.currency ?? 'eur').toUpperCase();
@@ -57,7 +54,6 @@ export function useStripeCheckout() {
         );
         if (!ok) return;
 
-        // 3) CONFIRM — апгрейд. Здесь возможны 200 (нулевой счёт) или 402 (доплата/ПМ/3DS)
         res = await fetch('/api/stripe/create-checkout-session', {
           method: 'POST',
           body: JSON.stringify({ priceId, confirm: true }),
@@ -72,7 +68,6 @@ export function useStripeCheckout() {
           json = await res.json();
         } catch {}
 
-        // 402 → редирект в hostedInvoice или в Портал
         if (!res.ok) {
           if (json?.portalUrl) {
             window.location.href = json.portalUrl;
@@ -86,20 +81,17 @@ export function useStripeCheckout() {
           return;
         }
 
-        // 200 с requiresAction (на всякий случай) → редирект
         if (json?.requiresAction && (json?.hostedInvoiceUrl || json?.url)) {
           window.location.href = json.hostedInvoiceUrl || json.url;
           return;
         }
 
-        // 200 нулевой счёт → успех
         if (json?.url) {
           window.location.href = json.url;
           return;
         }
       }
 
-      // 4) Free→Paid (Checkout Session): сервер вернёт session.url
       if (json?.portalUrl) {
         if (userId) {
           await logUserAction({

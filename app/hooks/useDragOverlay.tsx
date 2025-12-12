@@ -6,7 +6,6 @@ import { File } from 'lucide-react';
 function isFileDrag(e: DragEvent) {
   const types = e.dataTransfer?.types;
   if (!types) return false;
-  // В браузерах types — DOMStringList/ArrayLike
   for (let i = 0; i < types.length; i++) {
     if (types[i] === 'Files') return true;
   }
@@ -19,34 +18,31 @@ export function useDragOverlay() {
 
   useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
-      if (!isFileDrag(e)) return; // ⬅️ важно: игнорим не-файловый DnD
+      if (!isFileDrag(e)) return;
       e.preventDefault();
       dragCounter.current++;
       setIsDragging(true);
     };
 
     const handleDragLeave = (e: DragEvent) => {
-      if (!isFileDrag(e)) return; // ⬅️
+      if (!isFileDrag(e)) return;
       e.preventDefault();
       dragCounter.current--;
       if (dragCounter.current <= 0) setIsDragging(false);
     };
 
     const handleDrop = (e: DragEvent) => {
-      if (!isFileDrag(e)) return; // ⬅️
+      if (!isFileDrag(e)) return;
       e.preventDefault();
       dragCounter.current = 0;
       setIsDragging(false);
     };
 
     const handleDragOver = (e: DragEvent) => {
-      // Разрешаем drop ТОЛЬКО для файлов, чтобы системный оверлей работал;
-      // внутренний DnD не трогаем вообще.
-      if (!isFileDrag(e)) return; // ⬅️
+      if (!isFileDrag(e)) return;
       e.preventDefault();
     };
 
-    // Ниже — безопасные «сбросы» состояния; они не мешают внутреннему DnD
     const handleDragEnd = () => {
       dragCounter.current = 0;
       setIsDragging(false);
@@ -79,7 +75,7 @@ export function useDragOverlay() {
     ? createPortal(
         <motion.div
           className="fixed inset-0 z-50 backdrop-blur-md bg-black/10 flex items-center justify-center pointer-events-none"
-          data-interactive="true" /* ⬅️ не блокируем клики глобальными стилями */
+          data-interactive="true"
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}

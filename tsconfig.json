@@ -15,14 +15,14 @@
     "jsx": "preserve",
     "incremental": true,
 
-    "baseUrl": ".", // 👈 корень проекта
+    "baseUrl": ".", 
     "paths": {
       "@/*": ["./*"],
       "@/app/*": ["app/*"],
       "@/lib/*": ["lib/*"],
       "@/types/*": ["types/*"],
       "@/components/*": ["app/components/*"],
-      "@/config/*": ["config/*"] // 👈 ДОБАВЛЕНО
+      "@/config/*": ["config/*"] 
     },
 
     "plugins": [

@@ -104,9 +104,8 @@ export async function parseExcel(filepath: string) {
     }
   }
 
-  // Определяем язык на основе всей формулы
   const combinedText = uniqueLines.map((l) => l.text).join(' ');
-  let userLanguage = 'English'; // Default fallback
+  let userLanguage = 'English';
 
   if (combinedText) {
     const detectedLangCode = franc(combinedText, { minLength: 10 });
@@ -123,7 +122,6 @@ export async function parseExcel(filepath: string) {
   console.log('✅ Embedded Images:', imagesBase64);
   console.log('✅ Detected Language:', userLanguage);
 
-  // ✅ Возвращаем formulaLanguage вместо userLanguage
   return {
     parsedLines: uniqueLines,
     imagesBase64,

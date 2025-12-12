@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useMemo, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/context/AuthProvider';
 import dynamic from 'next/dynamic';
@@ -24,7 +24,7 @@ import { useDragOverlay } from '@/app/hooks/useDragOverlay';
 import { useScrollObserver } from '@/app/hooks/useScrollObserver';
 import SaveProfileModal from '@/app/components/SaveProfileModal';
 import AuthModal from '@/app/components/AuthModal';
-import { useSavedProfiles } from '@/app/hooks/useSavedProfiles';
+import { useSavedProfiles, SavedProfile } from '@/app/hooks/useSavedProfiles';
 import { FaLinkedin } from 'react-icons/fa';
 import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
 import SessionBridge from '@/app/components/SessionBridge';
@@ -37,6 +37,8 @@ import {
 } from './WorkspaceSidebar';
 import { RightPromoBanner } from './RightPromoBanner';
 import { LeftUpdateBanner } from './LeftUpdateBanner';
+import AnalysisHistoryPanel, { AnalysisHistoryItem } from './AnalysisHistoryPanel';
+import { BottomPlanBanner } from './BottomPlanBanner';
 
 type Attachment = { name: string; base64: string };
 
@@ -72,6 +74,10 @@ const OnboardingSpotlight = dynamic(
 );
 
 export default function WorkspacePage() {
+  const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([]);
+  const [selectedHistoryProfile, setSelectedHistoryProfile] = useState<SavedProfile | null>(null);
+  const [previewImageToSave, setPreviewImageToSave] = useState<string | null>(null);
+
   const { session, user, isLoading, signOut } = useAuth();
 
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -300,7 +306,78 @@ export default function WorkspacePage() {
   const { isDragging, overlay, setIsDragging } = useDragOverlay();
   const { isAtBottom } = useScrollObserver(bottomRef, scrollRef, historyLoaded);
 
-  const { saveProfile, getFolders } = useSavedProfiles();
+  const { saveProfile, getFolders, getSavedProfiles, updateProfile } = useSavedProfiles();
+
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) {
+      setSavedProfiles([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const items = await getSavedProfiles(uid);
+        const fromUniversal = items.filter((p) => p.folder === 'Universal Archive');
+        if (!cancelled) {
+          setSavedProfiles(fromUniversal);
+        }
+      } catch (err) {
+        console.error('Failed to fetch saved profiles for history panel', err);
+        if (!cancelled) {
+          setSavedProfiles([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) return;
+
+    const handleRefresh = async () => {
+      try {
+        const items = await getSavedProfiles(uid);
+        const fromUniversal = items.filter((p) => p.folder === 'Universal Archive');
+        setSavedProfiles(fromUniversal);
+      } catch (err) {
+        console.error('Failed to refresh saved profiles for history panel', err);
+      }
+    };
+
+    window.addEventListener('savedMessages:refresh', handleRefresh as EventListener);
+    return () => {
+      window.removeEventListener('savedMessages:refresh', handleRefresh as EventListener);
+    };
+  }, [session?.user?.id]);
+
+  const historyItems: AnalysisHistoryItem[] = useMemo(
+    () =>
+      savedProfiles
+        .filter((p) => (p.folder ?? 'Universal Archive') === 'Universal Archive')
+        .map((p) => ({
+          id: p.id,
+          title: p.profile_name,
+          imageUrl: p.chat_json?.preview_image ?? null,
+          createdAt: p.saved_at,
+        })),
+    [savedProfiles]
+  );
+
+  const activeAnalysisId = selectedHistoryProfile?.id ?? null;
+
+  const handleHistorySelect = (id: string) => {
+    const profile = savedProfiles.find((p) => p.id === id);
+    if (profile) {
+      setSelectedHistoryProfile(profile);
+    }
+  };
 
   const lastSavedMessageIdRef = useRef<string | null>(null);
   const autoSaveEnabledRef = useRef(false);
@@ -515,9 +592,27 @@ export default function WorkspacePage() {
     if (lastAiMsg) {
       setAiResponseToSave(lastAiMsg.content);
       setIsNewProfile(true);
+
+      let preview: string | null = null;
+      for (const msg of [...messages].reverse()) {
+        try {
+          const parsed = JSON.parse(msg.content);
+          if (parsed && Array.isArray(parsed.attachments)) {
+            const img = parsed.attachments.find(
+              (f: any) => typeof f.base64 === 'string' && f.base64.startsWith('data:image/')
+            );
+            if (img) {
+              preview = img.base64;
+              break;
+            }
+          }
+        } catch {}
+      }
+
+      setPreviewImageToSave(preview);
       setShowSaveModal(true);
     } else {
-      alert('No AI response found to save.');
+      alert('No response found to save.');
     }
   };
 
@@ -1341,16 +1436,56 @@ export default function WorkspacePage() {
                 chat_json: {
                   ai_response: aiResponse || '',
                   user_comments: comments,
+                  preview_image: previewImageToSave,
                 },
                 saved_at: Date.now(),
                 folder: selectedFolder ?? 'Universal Archive',
               });
 
               setShowSaveModal(false);
+              setPreviewImageToSave(null);
               refetch?.();
             }}
             defaultProfileName={`DR ${new Date().toLocaleDateString('en-GB')}`}
           />
+
+          {selectedHistoryProfile && (
+            <SaveProfileModal
+              open={true}
+              onClose={() => setSelectedHistoryProfile(null)}
+              aiResponse={selectedHistoryProfile.chat_json.ai_response}
+              isNew={false}
+              readonly={false}
+              folders={folders}
+              defaultProfileName={selectedHistoryProfile.profile_name}
+              onSave={async (name, aiResponse, comments, selectedFolder) => {
+                await updateProfile(selectedHistoryProfile.id, {
+                  profile_name: name,
+                  chat_json: {
+                    ai_response: aiResponse,
+                    user_comments: comments,
+                    preview_image: selectedHistoryProfile.chat_json.preview_image ?? null,
+                  },
+                  folder: selectedFolder ?? selectedHistoryProfile.folder ?? 'Universal Archive',
+                });
+
+                setSelectedHistoryProfile(null);
+
+                const uid = session?.user?.id;
+                if (uid) {
+                  try {
+                    const items = await getSavedProfiles(uid);
+                    const fromUniversal = items.filter((p) => p.folder === 'Universal Archive');
+                    setSavedProfiles(fromUniversal);
+                  } catch (err) {
+                    console.error('Failed to refresh saved profiles after update', err);
+                  }
+                }
+
+                window.dispatchEvent(new Event('savedMessages:refresh'));
+              }}
+            />
+          )}
 
           {showAuthModal && <AuthModal onClose={closeAuthModal} />}
 
@@ -1425,6 +1560,13 @@ export default function WorkspacePage() {
               isLoggedIn={!!session}
               onSignOut={handleLogoutConfirm}
               onOpenAuthModal={openAuthModal}
+            />
+          )}
+          {false && (
+            <AnalysisHistoryPanel
+              items={historyItems}
+              activeId={activeAnalysisId}
+              onSelect={handleHistorySelect}
             />
           )}
         </div>

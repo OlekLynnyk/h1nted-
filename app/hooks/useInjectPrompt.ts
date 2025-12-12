@@ -11,11 +11,9 @@ export function useInjectPrompt() {
       return;
     }
 
-    // 1) Корректно проставляем value через нативный сеттер (чтобы React onChange не слетал)
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
     setter ? setter.call(textarea, text) : (textarea.value = text);
 
-    // 2) Диспатчим input, чтобы React поднял новое значение в state
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
 
     const len = textarea.value.length;
@@ -24,7 +22,6 @@ export function useInjectPrompt() {
       if (!isIOS) textarea.setSelectionRange(len, len);
     } catch {}
 
-    // 4) Мгновенный и отложенный ресайз — закрывает баг "не расширяется до пробела"
     const lineHeight = 24;
     const maxHeight = lineHeight * 8;
 
@@ -35,14 +32,10 @@ export function useInjectPrompt() {
       textarea.style.height = `${h}px`;
     };
 
-    // сразу и в следующий(ие) кадр(ы) — чтобы поймать актуальный scrollHeight после layout
     resize();
     const r1 = requestAnimationFrame(resize);
     const r2 = requestAnimationFrame(resize);
-    // на всякий пожарный — если layout задержится
-    setTimeout(resize, 0);
 
-    // очистка не обязательна тут, но пусть будет:
-    // return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
+    setTimeout(resize, 0);
   };
 }

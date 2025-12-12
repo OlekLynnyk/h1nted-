@@ -45,7 +45,6 @@ export function useUserSubscription() {
           trial_end_date: json.trialEndDate ?? null,
           cancel_at_period_end: Boolean(json.cancelAtPeriodEnd),
           payment_method: json.paymentMethod ?? null,
-          // пока не active — явно показываем Freemium
           package_type: isActive ? (json.packageType ?? plan) : 'Freemium',
         });
       } catch (e: any) {

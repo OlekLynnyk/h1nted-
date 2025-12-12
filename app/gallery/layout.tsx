@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function GalleryLayout({ children }: { children: ReactNode }) {
-  return children; // ← без JSX
+  return children;
 }

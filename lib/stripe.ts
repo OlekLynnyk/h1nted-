@@ -3,7 +3,6 @@ import 'server-only';
 import Stripe from 'stripe';
 import { env } from '@/env.server';
 
-// Используем версию API, закреплённую в аккаунте — безопасно и без регрессии
 export const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
 export const DEFAULT_CURRENCY = 'eur';

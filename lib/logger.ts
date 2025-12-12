@@ -2,10 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 import { env } from '@/env.server';
 
-/** 🔹 Client-side безопасные логгеры */
 export function logError(message: string, context?: any) {
   console.error(`[ERROR]: ${message}`, context);
-  // TODO: интеграция с Sentry
 }
 
 export function logInfo(message: string, context?: any) {
@@ -16,7 +14,6 @@ export function logWarn(message: string, context?: any) {
   console.warn(`[WARN]: ${message}`, context);
 }
 
-/** 🔐 Серверная инициализация Supabase-клиента */
 function getServerSupabaseClient() {
   if (typeof window !== 'undefined') {
     throw new Error('getServerSupabaseClient() called in client environment');
@@ -34,7 +31,6 @@ function getServerSupabaseClient() {
   });
 }
 
-/** 📄 Логирование пользовательского действия (изоморфно) */
 export async function logUserAction({
   userId,
   action,
@@ -45,7 +41,6 @@ export async function logUserAction({
   metadata?: Record<string, any> | null;
 }) {
   if (typeof window !== 'undefined') {
-    // 🔹 Клиентская часть — всегда безопасная
     try {
       const { createPagesBrowserClient } = await import('@supabase/auth-helpers-nextjs');
       const supabase = createPagesBrowserClient<Database>({
@@ -71,7 +66,6 @@ export async function logUserAction({
     return;
   }
 
-  // 🔐 Серверная часть — теперь через try/catch
   try {
     const supabase = getServerSupabaseClient();
     const { error } = await supabase
@@ -84,7 +78,6 @@ export async function logUserAction({
       logInfo(`User action logged: ${action}`, { userId, metadata });
     }
   } catch (err) {
-    // ⚠️ Никогда не бросаем наружу — чтобы не уронить API
     logWarn('logger: service-role client init failed, skip user_log write', {
       message: err instanceof Error ? err.message : String(err),
       action,
@@ -92,7 +85,6 @@ export async function logUserAction({
   }
 }
 
-/** 🔹 Безопасная обёртка — вызывать там, где AI/инициализация критична */
 export async function tryLogUserAction(args: {
   userId: string;
   action: string;

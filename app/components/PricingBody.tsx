@@ -27,12 +27,9 @@ function CheckIcon() {
   );
 }
 
-// ✅ обновлённый FeatureRow — решает ТЗ без изменения структуры
 function FeatureRow({ children }: { children: React.ReactNode }) {
-  // Преобразуем в строку для проверки наличия скобок
   const text = typeof children === 'string' ? children : '';
 
-  // Если есть "(", разбиваем текст
   const hasParentheses = text.includes('(');
   let mainText = text;
   let subText = '';
@@ -53,9 +50,7 @@ function FeatureRow({ children }: { children: React.ReactNode }) {
         className="flex-1 text-white [font-variant-caps:small-caps]"
         style={{ fontFamily: FONT.family }}
       >
-        {/* Основная строка */}
         <div className="text-[14px] leading-[145%]">{mainText}</div>
-        {/* Подстрока в скобках, если есть */}
         {subText && (
           <div className="text-[12px] leading-[145%] text-white/70 mt-[2px]">{subText}</div>
         )}
@@ -84,7 +79,6 @@ function Card({
   return (
     <div className="flex flex-col justify-between gap-5 md:min-h-[637px] md:w-[360px] md:justify-between">
       <div className="mx-auto flex w-full max-w-[360px] flex-col items-start gap-5">
-        {/* Title & price */}
         <div className="flex w/full flex-col items-center gap-3">
           <div
             className="flex flex-col items-center"
@@ -120,7 +114,6 @@ function Card({
           )}
         </div>
 
-        {/* Preface (optional, e.g., for Premium) */}
         {preface && (
           <div className="flex w-full items-start justify-start py-2">
             <span
@@ -132,7 +125,6 @@ function Card({
           </div>
         )}
 
-        {/* Features */}
         <div className="w-full">
           <div className="flex w-full flex-col gap-3">
             {features.map((f, i) => (
@@ -142,7 +134,6 @@ function Card({
         </div>
       </div>
 
-      {/* Button */}
       <div className="mx-auto w-full max-w-[360px]">
         <button
           type="button"
@@ -168,12 +159,10 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
     <section id="pricing" className="w-full bg-black" aria-label="Pricing plans">
       <div className="mx-auto max-w-[1440px] px-3 md:px-[100px]">
         <div className="relative pt-[48px] md:pt-[64px] pb-10 md:pb-16">
-          {/* Мобильный заголовок, как было */}
           <div className="hidden" style={{ fontFamily: FONT.family }}>
             Plans:
           </div>
 
-          {/* Заголовок блока подписок (Subscriptions) */}
           <div
             className="
               text-center text-white [font-variant-caps:small-caps]
@@ -187,9 +176,7 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
           </div>
 
           <div className="mx-auto flex w-full max-w/[351px] flex-col gap-10 md:max-w/[1240px]">
-            {/* ======== Ряд 1: Subscriptions (3 блока) ======== */}
             <div className="flex w-full flex-col gap-10 md:flex-row md:items-start md:justify-between md:gap-[40px]">
-              {/* Card 1 — Freemium */}
               <Card
                 title="Freemium"
                 price={<span>€0</span>}
@@ -212,7 +199,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                 aria-hidden
               />
 
-              {/* Card 2 — Premium */}
               <Card
                 title="Premium"
                 price={<span>€49 / month</span>}
@@ -222,7 +208,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                 buttonLabel="Upgrade to Premium"
                 onButtonClick={async () => {
                   try {
-                    // Проверяем, залогинен ли пользователь
                     const supabase = createClientComponentClient();
                     const {
                       data: { session },
@@ -233,7 +218,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                       onLoginClick();
                       return;
                     }
-                    // Пользователь есть → создаём Checkout
                     const res = await fetch('/api/stripe/create-checkout-session', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -258,7 +242,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                 aria-hidden
               />
 
-              {/* Card 3 — второй Premium (копия) */}
               <Card
                 title="Business"
                 price={<span>€199 / month</span>}
@@ -273,7 +256,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                 buttonLabel="Upgrade to Business"
                 onButtonClick={async () => {
                   try {
-                    // Проверяем, залогинен ли пользователь
                     const supabase = createClientComponentClient();
                     const {
                       data: { session },
@@ -284,7 +266,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                       onLoginClick();
                       return;
                     }
-                    // Пользователь есть → создаём Checkout
                     const res = await fetch('/api/stripe/create-checkout-session', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -305,10 +286,8 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
               />
             </div>
 
-            {/* ======== Разделительная линия между Subscription и Services ======== */}
             <div className="h-px w-full bg-white/20 opacity-20" aria-hidden />
 
-            {/* Заголовок блока сервисов (Services) */}
             <div
               className="
                 hidden md:block
@@ -322,9 +301,7 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
               Services
             </div>
 
-            {/* ======== Ряд 2: Services (2 блока Signature + пустой слот) ======== */}
             <div className="flex w-full flex-col gap-10 md:flex-row md:items-start md:justify-between md:gap-[40px]">
-              {/* Signature Services — первый блок */}
               <Card
                 title="Signature Services"
                 price={<span>API</span>}
@@ -341,7 +318,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                 aria-hidden
               />
 
-              {/* Signature Services — второй блок (копия) */}
               <Card
                 title="Signature Services"
                 price={<span>Custom</span>}
@@ -358,7 +334,6 @@ export default function PricingBody({ onLoginClick }: { onLoginClick: () => void
                 }
               />
 
-              {/* Пустой слот под будущий третий сервис на десктопе */}
               <div className="hidden md:block md:w-[360px]" aria-hidden />
             </div>
           </div>
