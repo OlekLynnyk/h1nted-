@@ -83,7 +83,7 @@ export default function AnalysisHistoryPanel({
         right-4
         top-[72px]
         bottom-[72px]
-        z-30
+        z-90
         w-[96px]
         flex-col items-center
         rounded-3xl
@@ -248,6 +248,7 @@ function PreviewCard({
     >
       <div
         className="
+          relative
           aspect-square
           w-full
           rounded-2xl
@@ -258,34 +259,37 @@ function PreviewCard({
           group-hover:shadow-md
           group-hover:border-[var(--surface-secondary)]
           transition
-          flex flex-col
-        "
+         "
       >
+        {hasLiveImage ? (
+          <img
+            src={item.imageUrl as string}
+            alt={item.title}
+            className="absolute inset-0 w-full h-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <div className="absolute inset-0">
+            <PlaceholderImage src={placeholderSrc} dimmed={isExpired} />
+          </div>
+        )}
+
         <div
           className="
-            px-2 pt-1 pb-1.5
+            absolute inset-x-0 bottom-0
+            px-2 py-0.75
             text-[8px]
             font-monoBrand
             tracking-[0.14em]
             uppercase
-            text-[var(--text-secondary)]
-            bg-[var(--background)]/60
+            text-[var(--text-primary)]
             truncate
-          "
+            bg-[var(--background)]/20
+            backdrop-blur-md
+           "
+          title={item.title}
         >
           {item.title}
-        </div>
-
-        <div className="flex-1">
-          {hasLiveImage ? (
-            <img
-              src={item.imageUrl as string}
-              alt={item.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <PlaceholderImage src={placeholderSrc} dimmed={isExpired} />
-          )}
         </div>
       </div>
     </button>
@@ -304,6 +308,7 @@ function LinesBackground() {
   return (
     <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] bg-[var(--surface-secondary)]/30 rounded-full pointer-events-none">
       {Array.from({ length: 16 }).map((_, idx) => {
+        if (idx === 15) return null;
         const isLong = idx % 3 === 0;
         const offset = (idx / 15) * 100;
 

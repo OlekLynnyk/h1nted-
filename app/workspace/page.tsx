@@ -42,6 +42,40 @@ import { BottomPlanBanner } from './BottomPlanBanner';
 
 type Attachment = { name: string; base64: string };
 
+function extractPreviewImageFromMessageContent(content: string): string | null {
+  try {
+    const parsed = JSON.parse(content);
+    const attachments = parsed?.attachments;
+    if (!Array.isArray(attachments)) return null;
+
+    const img = attachments.find(
+      (a: any) => typeof a?.base64 === 'string' && a.base64.startsWith('data:image/')
+    );
+
+    return img?.base64 ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function findLatestPreviewImageForAssistant(
+  messages: { id: string; role: string; content: string }[],
+  assistantId: string
+): string | null {
+  const idx = messages.findIndex((m) => m.id === assistantId);
+  if (idx <= 0) return null;
+
+  for (let i = idx - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== 'user') continue;
+
+    const preview = extractPreviewImageFromMessageContent(m.content);
+    if (preview) return preview;
+  }
+
+  return null;
+}
+
 function AmbientBackdrop({ src, offset }: { src: string; offset: number }) {
   return (
     <div
@@ -102,6 +136,19 @@ export default function WorkspacePage() {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showRightBanner, setShowRightBanner] = useState(true);
+
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+
+  useEffect(() => {
+    if (showRightBanner) {
+      setShowHistoryPanel(false);
+      return;
+    }
+
+    const t = window.setTimeout(() => setShowHistoryPanel(true), 260);
+    return () => window.clearTimeout(t);
+  }, [showRightBanner]);
+
   const [showLeftBanner, setShowLeftBanner] = useState(true);
   const [activeSidebarBox, setActiveSidebarBox] = useState<
     'templates' | 'saved-messages' | 'library' | null
@@ -550,18 +597,17 @@ export default function WorkspacePage() {
     if (!userId) return;
 
     if (!autoSaveEnabledRef.current) return;
-
     if (!messages.length) return;
 
     const last = [...messages].reverse().find((m) => m.role === 'assistant' && !m.isStreaming);
-
     if (!last) return;
 
     if (lastSavedMessageIdRef.current === last.id) return;
-
     lastSavedMessageIdRef.current = last.id;
 
     const filename = `DR ${new Date().toLocaleDateString('en-GB')}`;
+
+    const preview = findLatestPreviewImageForAssistant(messages as any, last.id);
 
     saveProfile({
       user_id: userId,
@@ -569,11 +615,16 @@ export default function WorkspacePage() {
       chat_json: {
         ai_response: last.content,
         user_comments: '',
+        preview_image: preview,
       },
       saved_at: Date.now(),
       folder: 'Universal Archive',
-    }).catch(console.error);
-  }, [messages, session?.user?.id]);
+    })
+      .then(() => {
+        window.dispatchEvent(new Event('savedMessages:refresh'));
+      })
+      .catch(console.error);
+  }, [messages, session?.user?.id, saveProfile]);
 
   const handleLogoutConfirm = async () => {
     if (!window.confirm('Are you sure you want to sign out?')) return;
@@ -1562,12 +1613,18 @@ export default function WorkspacePage() {
               onOpenAuthModal={openAuthModal}
             />
           )}
-          {false && (
-            <AnalysisHistoryPanel
-              items={historyItems}
-              activeId={activeAnalysisId}
-              onSelect={handleHistorySelect}
-            />
+          {!isMobile && showHistoryPanel && (
+            <motion.div
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.22 }}
+            >
+              <AnalysisHistoryPanel
+                items={historyItems}
+                activeId={activeAnalysisId}
+                onSelect={handleHistorySelect}
+              />
+            </motion.div>
           )}
         </div>
       </div>
