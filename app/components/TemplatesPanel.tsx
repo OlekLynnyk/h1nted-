@@ -400,8 +400,19 @@ export default function TemplatesPanel({ isCdrMode = false }: TemplatesPanelProp
     );
   };
 
-  if (loading) return <p className="text-sm text-[var(--text-secondary)]">Loading templates…</p>;
-  if (err) return <p className="text-sm text-[var(--danger)]">{err}</p>;
+  if (loading)
+    return (
+      <p className="font-monoBrand text-[10px] tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-80">
+        Loading templates...
+      </p>
+    );
+
+  if (err)
+    return (
+      <p className="font-monoBrand text-[10px] tracking-[0.14em] uppercase text-[var(--danger)] opacity-80">
+        {err}
+      </p>
+    );
 
   return (
     <div

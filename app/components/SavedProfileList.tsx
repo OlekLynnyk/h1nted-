@@ -394,16 +394,16 @@ export default function SavedProfileList({ showCreateBlockButton = false }: Save
 
   if (loading) {
     return (
-      <p className="font-monoBrand text-xs tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-80">
-        LOADING SAVED REPORTS…
+      <p className="font-monoBrand text-[10px] tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-80">
+        Loading Saved Analysis...
       </p>
     );
   }
 
   if (profiles.length === 0) {
     return (
-      <p className="font-monoBrand text-xs tracking-[0.14em] uppercase text-[var(--text-secondary)] opacity-60">
-        NO SAVED REPORTS YET.
+      <p className="font-monoBrand text-[10px] tracking-[0.1em] uppercase text-[var(--text-secondary)] opacity-60">
+        No saved analysis yet.
       </p>
     );
   }

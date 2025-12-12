@@ -32,7 +32,7 @@ type NavItem = {
 
 const PRIMARY_ITEMS: NavItem[] = [
   { id: 'templates', label: 'Diplomacy Templates', icon: LayoutTemplate },
-  { id: 'saved', label: 'Saved messages', icon: Bookmark },
+  { id: 'saved', label: 'Analysis History', icon: Bookmark },
   { id: 'library', label: 'Library', icon: BookOpen, disabled: true },
 ];
 

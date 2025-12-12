@@ -108,7 +108,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
             text-[var(--text-primary)]
           "
         >
-          {/* Background image */}
           <Image
             src="/images/plan-limit.png"
             alt="Plan limit"
@@ -116,7 +115,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
             priority={false}
             className="object-cover"
           />
-          {/* Theme-adaptive overlay for readability */}
           <div className="absolute inset-0 bg-[var(--background)]/80" />
 
           {!expanded ? (
@@ -125,7 +123,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                 You've reached the plan limit:
               </span>
 
-              {/* ✅ MOBILE ONLY: 2 CTA in one row + small expand button below */}
               <div className="md:hidden flex flex-col gap-2 w-full">
                 <div className="flex gap-2 w-full">
                   <button
@@ -183,7 +180,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                 </div>
               </div>
 
-              {/* ✅ DESKTOP (md+) — оставлено как было */}
               <div className="hidden md:flex flex-col md:flex-row gap-2 md:items-center w-full md:w-auto">
                 <button
                   onClick={() => handleCheckout('Premium')}
@@ -219,7 +215,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                   Upgrade to Business
                 </button>
 
-                {/* Expand arrow stays in compact */}
                 <button
                   onClick={() => setExpanded(true)}
                   className="
@@ -247,7 +242,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                 max-h-[min(65svh,calc(100vh-200px))] md:max-h-none
               "
             >
-              {/* Top-right close (appears on hover like banners) */}
               <div className="sticky top-0 z-10">
                 <div className="flex justify-end pl-4 pr-2 sm:pl-6 sm:pr-4 pt-1">
                   <button
@@ -261,17 +255,18 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                       bg-[var(--background)]
                       border border-[var(--card-border)]
                       text-[var(--text-secondary)]
-                      opacity-0 group-hover:opacity-100
                       transition
                       hover:bg-[var(--surface)]
-                    "
+                      opacity-100
+                      md:opacity-0
+                      md:group-hover:opacity-100
+                     "
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {/* --- Plans --- */}
               <div
                 className="
                   mt-2
@@ -283,7 +278,6 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                   bg-[var(--background)]/60
                 "
               >
-                {/* Premium */}
                 <div className="flex-1 p-6 flex flex-col justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-center">Premium</h3>
@@ -328,10 +322,8 @@ export default function LimitModal({ show, onClose, sidebarOffset = 0 }: LimitMo
                   </button>
                 </div>
 
-                {/* Divider for desktop */}
                 <div className="hidden md:block w-px bg-[var(--card-border)]" />
 
-                {/* Business */}
                 <div className="flex-1 p-6 flex flex-col justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-center">Business</h3>
